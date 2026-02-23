@@ -1,64 +1,70 @@
-package com.back.domain.welfare.center.center.service;
+package com.back.domain.welfare.center.center.service
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
-
-import com.back.domain.welfare.center.center.dto.CenterApiRequestDto;
-import com.back.domain.welfare.center.center.dto.CenterApiResponseDto;
-import com.back.domain.welfare.center.center.entity.Center;
-import com.back.domain.welfare.center.center.repository.CenterRepository;
-import com.back.standard.util.SidoNormalizer;
-
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import com.back.domain.welfare.center.center.dto.CenterApiRequestDto
+import com.back.domain.welfare.center.center.dto.CenterApiRequestDto.Companion.from
+import com.back.domain.welfare.center.center.dto.CenterApiResponseDto.CenterDto
+import com.back.domain.welfare.center.center.entity.Center
+import com.back.domain.welfare.center.center.repository.CenterRepository
+import com.back.standard.util.SidoNormalizer
+import lombok.SneakyThrows
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import kotlin.math.ceil
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
-public class CenterService {
-    private final CenterApiService centerApiService;
-    private final CenterRepository centerRepository;
+class CenterService(
+    private val centerApiService: CenterApiService,
+    private val centerRepository: CenterRepository
+) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
-    @SneakyThrows
-    public List<Center> getCenterData() {
+    /**
+     * 데이터를 가져와 저장하고 리스트를 반환합니다.
+     * 코틀린에서는 Checked Exception을 강제하지 않으므로 SneakyThrows가 필요 없습니다.
+     */
+    @Transactional
+    fun getCenterData(): MutableList<Center> {
+        val pageSize = 100
+        val firstResponse = centerApiService.fetchCenter(CenterApiRequestDto.from(1, pageSize))
 
-        int pageSize = 100;
-        CenterApiRequestDto centerApiRequestDto = CenterApiRequestDto.from(1, pageSize);
-        CenterApiResponseDto responseDto = centerApiService.fetchCenter(centerApiRequestDto);
+        val totalCnt = firstResponse.totalCount
+        val totalPages = ceil(totalCnt.toDouble() / pageSize).toInt()
 
-        int totalCnt = responseDto.totalCount;
-        int totalPages = (int) Math.ceil((double) totalCnt / pageSize);
+        // 1페이지 데이터 변환 및 저장
+        val allCenterList = firstResponse.data
+            ?.mapNotNull { it?.let { Center.dtoToEntity(it) } }
+            ?.toMutableList() ?: mutableListOf()
 
-        List<Center> centerList = new ArrayList<>(
-                responseDto.data.stream().map(Center::dtoToEntity).toList());
+        centerRepository.saveAll(allCenterList)
 
-        centerRepository.saveAll(centerList);
+        // 2페이지부터 순회
+        for (pageNo in 2..totalPages) {
+            log.debug("fetchCenter pageNo : {} ,pageSize : {} 실행", pageNo, pageSize)
 
-        for (int pageNo = 2; pageNo <= totalPages; pageNo++) {
-            log.debug("fetchCenter pageNo : {} ,pageSize : {} 실행", pageSize, pageNo);
+            val nextResponse = centerApiService.fetchCenter(CenterApiRequestDto.from(pageNo, pageSize))
 
-            centerApiRequestDto = CenterApiRequestDto.from(pageNo, pageSize);
-            CenterApiResponseDto nextResponseDto = centerApiService.fetchCenter(centerApiRequestDto);
+            // 데이터 변환 (Stream 대신 mapNotNull 사용)
+            val updatedCenterList = nextResponse.data
+                ?.mapNotNull { it?.let { Center.dtoToEntity(it) } }
+                ?: emptyList()
 
-            List<Center> updatedCenterList =
-                    nextResponseDto.data.stream().map(Center::dtoToEntity).toList();
+            if (updatedCenterList.isNotEmpty()) {
+                centerRepository.saveAll(updatedCenterList)
+                allCenterList.addAll(updatedCenterList)
+            }
 
-            centerRepository.saveAll(updatedCenterList);
-            centerList.addAll(updatedCenterList);
-
-            Thread.sleep(500);
+            Thread.sleep(500)
         }
 
-        return centerList;
+        return allCenterList
     }
 
-    @Cacheable(value = "center", key = "#sido + ':' + #signguNm")
-    public List<Center> searchCenterList(String sido, String signguNm) {
-        String normalizedSido = SidoNormalizer.normalizeSido(sido);
-        return centerRepository.findByAddressContaining(normalizedSido);
+    @Cacheable(value = ["center"], key = "#sido + ':' + #signguNm")
+    fun searchCenterList(sido: String?, signguNm: String?): List<Center> {
+        val normalizedSido = SidoNormalizer.normalizeSido(sido)
+        return centerRepository.findByAddressContaining(normalizedSido) ?: emptyList()
     }
 }
