@@ -157,6 +157,8 @@ dependencies {
     implementation("org.apache.httpcomponents.client5:httpclient5")
     implementation(kotlin("stdlib"))
 
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+
 }
 
 tasks.withType<Test> {
