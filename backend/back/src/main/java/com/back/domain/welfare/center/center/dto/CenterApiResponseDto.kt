@@ -2,16 +2,14 @@ package com.back.domain.welfare.center.center.dto
 
 import com.back.domain.welfare.center.center.entity.Center
 
-@JvmRecord
 data class CenterApiResponseDto(
     val page: Int,
     val perPage: Int,
-    @JvmField val totalCount: Int,
+    val totalCount: Int,
     val currentCount: Int,
     val matchCount: Int,
-    @JvmField val data: List<CenterDto>
+    val data: List<CenterDto>
 ) {
-    @JvmRecord
     data class CenterDto(
         val id: Int,
 

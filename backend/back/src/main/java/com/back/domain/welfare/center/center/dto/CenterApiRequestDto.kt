@@ -1,9 +1,8 @@
 package com.back.domain.welfare.center.center.dto
 
-@JvmRecord
 data class CenterApiRequestDto(
-    @JvmField val page: Int?,  // page index (default = 1)
-    @JvmField val perPage: Int?,  // pageSize (default = 10)
+    val page: Int?,  // page index (default = 1)
+    val perPage: Int?,  // pageSize (default = 10)
     val returnType: String? // json xml (default = json)
 ) {
     companion object {

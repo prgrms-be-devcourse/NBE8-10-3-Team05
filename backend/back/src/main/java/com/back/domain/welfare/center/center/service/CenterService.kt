@@ -3,6 +3,7 @@ package com.back.domain.welfare.center.center.service
 import com.back.domain.welfare.center.center.dto.CenterApiRequestDto
 import com.back.domain.welfare.center.center.dto.CenterApiRequestDto.Companion.from
 import com.back.domain.welfare.center.center.dto.CenterApiResponseDto.CenterDto
+import com.back.domain.welfare.center.center.dto.dtoToEntity
 import com.back.domain.welfare.center.center.entity.Center
 import com.back.domain.welfare.center.center.repository.CenterRepository
 import com.back.standard.util.SidoNormalizer
@@ -35,8 +36,8 @@ class CenterService(
 
         // 1페이지 데이터 변환 및 저장
         val allCenterList = firstResponse.data
-            ?.mapNotNull { it?.let { Center.dtoToEntity(it) } }
-            ?.toMutableList() ?: mutableListOf()
+            .map { it.dtoToEntity() }
+            .toMutableList()
 
         centerRepository.saveAll(allCenterList)
 
@@ -48,8 +49,8 @@ class CenterService(
 
             // 데이터 변환 (Stream 대신 mapNotNull 사용)
             val updatedCenterList = nextResponse.data
-                ?.mapNotNull { it?.let { Center.dtoToEntity(it) } }
-                ?: emptyList()
+                .map { it.dtoToEntity() }
+                .toMutableList()
 
             if (updatedCenterList.isNotEmpty()) {
                 centerRepository.saveAll(updatedCenterList)
