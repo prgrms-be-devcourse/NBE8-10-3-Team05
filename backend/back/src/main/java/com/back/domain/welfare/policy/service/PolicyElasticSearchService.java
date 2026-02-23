@@ -41,12 +41,12 @@ public class PolicyElasticSearchService {
      * ES 인덱스가 없으면 생성합니다.
      * - 매핑은 "지금 필요한 최소"만 잡아두고, 추후 검색 고도화 시 확장하는 것을 권장합니다.
      */
-    @Transactional
     public void ensureIndex() throws IOException {
         boolean exists =
                 esClient.indices().exists(ExistsRequest.of(r -> r.index(INDEX))).value();
 
         if (exists) {
+            esClient.indices().delete(d -> d.index(INDEX));
             return;
         }
 
