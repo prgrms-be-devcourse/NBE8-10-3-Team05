@@ -1,14 +1,20 @@
-package com.back.domain.welfare.center.lawyer.repository;
+package com.back.domain.welfare.center.lawyer.repository
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.back.domain.welfare.center.lawyer.entity.Lawyer
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.JpaRepository
 
-import com.back.domain.welfare.center.lawyer.entity.Lawyer;
+interface LawyerRepository : JpaRepository<Lawyer, String> {
+    fun existsByNameAndCorporation(name: String, corporation: String?): Boolean
 
-public interface LawyerRepository extends JpaRepository<Lawyer, Long> {
-    boolean existsByNameAndCorporation(String name, String corporation);
+    fun findByNameIn(names: List<String>): List<Lawyer>
+
     // 이름, 법인으로 중복체크
-
-    Page<Lawyer> findByDistrictArea1AndDistrictArea2Containing(String area1, String area2, Pageable pageable);
+    fun findByDistrictArea1AndDistrictArea2Containing(
+        area1: String,
+        area2: String?,
+        pageable: Pageable
+    ): Page<Lawyer>
 }
+

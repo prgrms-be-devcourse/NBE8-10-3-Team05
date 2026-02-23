@@ -1,14 +1,19 @@
-package com.back.domain.welfare.center.lawyer.dto;
+package com.back.domain.welfare.center.lawyer.dto
 
-import com.back.domain.welfare.center.lawyer.entity.Lawyer;
+import com.back.domain.welfare.center.lawyer.entity.Lawyer
 
-public record LawyerRes(String id, String name, String corporation, String districtArea1, String districtArea2) {
-    public LawyerRes(Lawyer lawyer) {
-        this(
-                lawyer.getId(),
-                lawyer.getName(),
-                lawyer.getCorporation(),
-                lawyer.getDistrictArea1(),
-                lawyer.getDistrictArea2());
-    }
+data class LawyerRes(
+    val id: String,
+    val name: String,
+    val corporation: String?,
+    val districtArea1: String,
+    val districtArea2: String?
+) {
+    constructor(lawyer: Lawyer) : this(
+        lawyer.id,
+        lawyer.name,
+        lawyer.corporation,
+        lawyer.districtArea1,
+        lawyer.districtArea2
+    )
 }

@@ -1,8 +1,9 @@
-package com.back.domain.welfare.center.lawyer.dto;
+package com.back.domain.welfare.center.lawyer.dto
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank
 
-public record LawyerReq(
-        @NotBlank String area1, // 시/도
-        String area2 // 군/구
-        ) {}
+data class LawyerReq(
+    @field:NotBlank
+    val area1: String,  // 시/도
+    val area2: String? = null // 군/구
+)

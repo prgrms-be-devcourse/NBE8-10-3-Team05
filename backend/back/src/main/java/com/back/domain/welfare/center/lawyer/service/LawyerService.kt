@@ -1,56 +1,44 @@
-package com.back.domain.welfare.center.lawyer.service;
+package com.back.domain.welfare.center.lawyer.service
 
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.back.domain.welfare.center.lawyer.dto.LawyerReq;
-import com.back.domain.welfare.center.lawyer.dto.LawyerRes;
-import com.back.domain.welfare.center.lawyer.entity.Lawyer;
-import com.back.domain.welfare.center.lawyer.repository.LawyerRepository;
-
-import lombok.RequiredArgsConstructor;
+import com.back.domain.welfare.center.lawyer.dto.LawyerReq
+import com.back.domain.welfare.center.lawyer.dto.LawyerRes
+import com.back.domain.welfare.center.lawyer.repository.LawyerRepository
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
-@RequiredArgsConstructor
-public class LawyerService {
-    private final LawyerRepository lawyerRepository;
+class LawyerService(private val lawyerRepository: LawyerRepository) {
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "lawyer", key = "{#lawyerReq, #pageable}")
-    public Page<LawyerRes> searchByDistrict(LawyerReq lawyerReq, Pageable pageable) {
-
-        String area1 = normalizeArea1(lawyerReq.area1());
+    @Cacheable(value = ["lawyer"], key = "{#lawyerReq, #pageable}")
+    fun searchByDistrict(lawyerReq: LawyerReq, pageable: Pageable): Page<LawyerRes> {
+        val area1 = normalizeArea1(lawyerReq.area1)
         // 서울특별시 -> 서울, 전라북도 -> 전북 으로 정규화 위함
-        String area2 = lawyerReq.area2();
 
-        Page<Lawyer> lawyerPage;
-        if (area2 != null && !area2.isBlank()) {
-            lawyerPage = lawyerRepository.findByDistrictArea1AndDistrictArea2Containing(area1, area2, pageable);
-        } else {
-            lawyerPage = lawyerRepository.findByDistrictArea1AndDistrictArea2Containing(area1, "", pageable);
-        }
+        val area2 = lawyerReq.area2 ?: ""
+        // 군/구 정보가 null이면 ""을 사용하도록..
 
-        return lawyerPage.map(LawyerRes::new);
+        val lawyerPage = lawyerRepository.findByDistrictArea1AndDistrictArea2Containing(area1, area2, pageable)
+
+        return lawyerPage.map(::LawyerRes)
     }
 
     // 서울특별시 -> 서울, 경상남도 -> 경남과 같이 area1 값을 처리
-    private String normalizeArea1(String area1) {
-        if (area1 == null || area1.length() <= 2) {
-            return area1;
-        }
+    private fun normalizeArea1(area1: String): String {
+        if (area1.length <= 2) return area1
 
         // 앞 두 글자 추출 (서울, 경기, 제주, 전라, 경상, 충청..)
-        String prefix = area1.substring(0, 2);
+        val prefix = area1.take(2)
 
         // 충청남도 -> 충북처럼 남/북 구분이 필요한 지역 처리
-        return switch (prefix) {
-            case "전라" -> area1.contains("남") ? "전남" : "전북";
-            case "경상" -> area1.contains("남") ? "경남" : "경북";
-            case "충청" -> area1.contains("남") ? "충남" : "충북";
-            default -> prefix;
-        };
+        return when (prefix) {
+            "전라" -> if (area1.contains("남")) "전남" else "전북"
+            "경상" -> if (area1.contains("남")) "경남" else "경북"
+            "충청" -> if (area1.contains("남")) "충남" else "충북"
+            else -> prefix
+        }
     }
 }

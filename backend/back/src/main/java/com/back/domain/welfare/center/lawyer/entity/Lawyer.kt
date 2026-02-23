@@ -1,30 +1,26 @@
-package com.back.domain.welfare.center.lawyer.entity;
+package com.back.domain.welfare.center.lawyer.entity
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
 
 @Entity
-@Getter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Lawyer {
-
+class Lawyer(
     @Id
-    private String id;
+    var id: String,
 
     @Column(nullable = false)
-    private String name;
+    val name: String,
 
     @Column(nullable = false)
-    private String corporation;
+    val corporation: String,
 
-    private String districtArea1;
-    // 시/도
-    private String districtArea2;
+    val districtArea1: String, // 시/도
+    val districtArea2: String? = null // 군/구
+
+) {
     // 군/구
-
-    public void generateId() {
-        this.id = String.format("%s_%s_%s_%s", this.name, this.corporation, this.districtArea1, this.districtArea2);
+    fun generateId() {
+        this.id = String.format("%s_%s_%s_%s", this.name, this.corporation, this.districtArea1, this.districtArea2)
     }
 }
