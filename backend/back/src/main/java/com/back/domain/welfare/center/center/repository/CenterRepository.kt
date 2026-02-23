@@ -1,13 +1,12 @@
-package com.back.domain.welfare.center.center.repository;
+package com.back.domain.welfare.center.center.repository
 
-import java.util.List;
+import com.back.domain.welfare.center.center.entity.Center
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
 
-import org.springframework.data.jpa.repository.JpaRepository;
+@Repository
+interface CenterRepository : JpaRepository<Center, Int> {
+    fun findByLocation(sido: String?): List<Center>
 
-import com.back.domain.welfare.center.center.entity.Center;
-
-public interface CenterRepository extends JpaRepository<Center, Integer> {
-    List<Center> findByLocation(String sido);
-
-    List<Center> findByAddressContaining(String sido);
+    fun findByAddressContaining(sido: String?): List<Center>
 }
