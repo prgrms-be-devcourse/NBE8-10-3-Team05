@@ -12,7 +12,7 @@ class Center(
 
     var location: String? = null,
     var name: String? = null,
-    var address: String? = null,
+    var address: String? = null ,
     var contact: String? = null,
     var operator: String? = null,
     var corpType: String? = null
