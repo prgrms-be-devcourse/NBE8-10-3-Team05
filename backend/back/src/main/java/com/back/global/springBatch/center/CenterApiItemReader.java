@@ -45,10 +45,10 @@ public class CenterApiItemReader extends AbstractPagingItemReader<CenterApiRespo
             try {
                 // 현재 선택된 키로 API 호출 (페이지 번호 전달)
 
-                CenterApiRequestDto requestDto = CenterApiRequestDto.from(getPage() + 1, getPageSize());
+                CenterApiRequestDto requestDto = CenterApiRequestDto.Companion.from(getPage() + 1, getPageSize());
                 CenterApiResponseDto responseDto = centerApiService.fetchCenter(requestDto);
 
-                List<CenterApiResponseDto.CenterDto> data = responseDto.data();
+                List<CenterApiResponseDto.CenterDto> data = responseDto.getData();
                 results.addAll(data);
                 success = true;
 

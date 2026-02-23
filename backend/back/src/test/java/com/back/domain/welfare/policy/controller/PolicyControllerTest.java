@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
+import co.elastic.clients.elasticsearch._types.HealthStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -78,6 +79,12 @@ public class PolicyControllerTest {
         // 5️⃣ index 생성 보장
         policyElasticSearchService.ensureIndex();
 
+        elasticsearchClient.cluster().health(h -> h
+            .index(INDEX)
+            .waitForStatus(HealthStatus.Yellow)
+            .timeout(t -> t.time("5s"))
+        );
+
         // 6️⃣ reindex
         policyElasticSearchService.reindexAllFromDb();
 
@@ -86,12 +93,12 @@ public class PolicyControllerTest {
 
     private void cleanupElasticsearch() throws Exception {
         if (elasticsearchClient.indices().exists(e -> e.index(INDEX)).value()) {
-            elasticsearchClient.indices().delete(d -> d.index(INDEX));
-            int retry = 0;
-            while (elasticsearchClient.indices().exists(e -> e.index(INDEX)).value() && retry < 10) {
-                Thread.sleep(500);
-                retry++;
-            }
+            elasticsearchClient.deleteByQuery(d -> d
+                .index(INDEX)
+                .query(q -> q.matchAll(m -> m))
+            );
+            // 삭제 후 즉시 반영을 위해 refresh
+            elasticsearchClient.indices().refresh(r -> r.index(INDEX));
         }
     }
 

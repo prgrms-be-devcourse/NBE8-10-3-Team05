@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Random;
 
+import com.back.domain.welfare.center.center.dto.CenterApiResponseDtoKt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -150,7 +151,7 @@ public class BaseInitData {
             CenterApiResponseDto response = objectMapper.readValue(is, CenterApiResponseDto.class);
 
             List<Center> centerList =
-                    response.data().stream().map(Center::dtoToEntity).toList();
+                    response.getData().stream().map(CenterApiResponseDtoKt::dtoToEntity).toList();
 
             centerRepository.saveAll(centerList);
 
