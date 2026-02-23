@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -43,7 +44,7 @@ internal class CenterServiceTest {
 
         val centerList: MutableList<Center> = centerService.getCenterData()
 
-        val savedCount = centerRepository!!.count()
+        val savedCount = centerRepository.count()
 
         assertThat(centerList).isNotEmpty
         assertThat(centerList.size).isEqualTo(totalCnt)

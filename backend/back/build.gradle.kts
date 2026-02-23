@@ -136,6 +136,8 @@ dependencies {
     implementation("org.jsoup:jsoup:1.17.2") // 웹 크롤링을 위해 Jsoup 라이브러리 추가
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+
     // Elasticsearch (Java API Client + Low Level Rest Client)
     // 버전은 반드시 맞춰서 사용하세요.
     implementation("co.elastic.clients:elasticsearch-java:8.11.3")
