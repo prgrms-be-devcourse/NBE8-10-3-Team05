@@ -46,7 +46,8 @@ public class PolicyApiItemReader extends AbstractPagingItemReader<PolicyFetchRes
                 // 현재 선택된 키로 API 호출 (페이지 번호 전달)
 
                 PolicyFetchRequestDto requestDto = new PolicyFetchRequestDto("", "", "", "");
-                PolicyFetchResponseDto responseDto = policyApiClient.fetchPolicyPage(requestDto, 1, getPageSize());
+                PolicyFetchResponseDto responseDto =
+                        policyApiClient.fetchPolicyPage(requestDto, getPage() + 1, getPageSize());
 
                 List<PolicyFetchResponseDto.PolicyItem> data =
                         responseDto.result().youthPolicyList();

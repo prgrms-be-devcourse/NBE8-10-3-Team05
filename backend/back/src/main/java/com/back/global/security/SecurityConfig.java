@@ -11,7 +11,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.back.global.security.jwt.JwtAuthenticationFilter;
@@ -26,30 +25,25 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final AuthenticationSuccessHandler customOAuth2LoginSuccessHandler;
+    private final CustomOAuth2LoginSuccessHandler customOAuth2LoginSuccessHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-                .authorizeHttpRequests(auth -> auth
-                        // 인증 없이 허용할 엔드포인트
-                        .requestMatchers("/favicon.ico")
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/favicon.ico", "/h2-console/**", "/error")
                         .permitAll()
-                        .requestMatchers("/h2-console/**")
+                        // 기본적으로 모든 조회는 가능하지만 user인증이 필요한 기능만 block
+                        .requestMatchers("/api/v1/welfare/**")
                         .permitAll()
-                        .requestMatchers("/api/v1/member/member/join")
+                        .requestMatchers(
+                                "/api/v1/member/member/login",
+                                "/api/v1/member/member/logout",
+                                "/api/v1" + "/member/member/join")
                         .permitAll()
-                        .requestMatchers("/api/v1/member/member/login")
+                        .requestMatchers("/api/v1/auth/reissue", "/batchTest")
                         .permitAll()
-                        .requestMatchers("/api/v1/member/member/logout")
-                        .permitAll()
-                        .requestMatchers("/api/v1/auth/reissue")
-                        .permitAll()
-                        .requestMatchers("/error")
-                        .permitAll()
-                        // 나머지는 인증 필요
                         .anyRequest()
                         .authenticated())
 
@@ -62,6 +56,7 @@ public class SecurityConfig {
                 .oauth2Login(
                         oauth2 -> oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                                 .successHandler(customOAuth2LoginSuccessHandler))
+                // TODO: customOAuth2LoginSuccessHandler 에서 socialLogin한 유저에게 accessToken과 refreshToken발급 x
 
                 // 토큰 없거나 인증 실패 → 401로 통일
                 .exceptionHandling(eh -> eh.authenticationEntryPoint(

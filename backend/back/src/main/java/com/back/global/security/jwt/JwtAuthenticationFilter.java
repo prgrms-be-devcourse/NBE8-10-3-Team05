@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.back.domain.member.member.entity.Member;
 import com.back.domain.member.member.repository.MemberRepository;
 import com.back.global.exception.ServiceException;
 
@@ -37,11 +36,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/h2-console")
+                || path.startsWith("/api/v1/welfare") // 기본적으로 조회는 모두 가능하도록
                 || path.equals("/api/v1/member/member/join")
                 || path.equals("/api/v1/member/member/login")
                 || path.equals("/api/v1/member/member/logout")
                 || path.equals("/api/v1/auth/reissue")
-                || path.equals("/favicon.ico");
+                || path.equals("/favicon.ico")
+                || path.equals("/batchTest");
     }
 
     @Override
@@ -84,13 +85,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String role = String.valueOf(claims.get("role")); // 예: USER
 
             // 탈퇴 회원 차단 (soft delete)
-            Member member = memberRepository
-                    .findById(memberId)
-                    .orElseThrow(() -> new ServiceException("AUTH-401", "존재하지 않는 회원입니다."));
-
-            if (member.getStatus() == Member.MemberStatus.DELETED) {
-                throw new ServiceException("AUTH-401", "탈퇴한 회원입니다.");
-            }
+            // TODO: 탈퇴회원 처리는 respotiory를 조회하는 것이 아닌,
+            //      Client측의 cookie를 삭제 + redis의 refreshToken제거 가 더 좋을 듯 합니다.
+            //      현재 withdraw하실 때 token다 날리니까 이부분은 주석처리 하셔도 될듯 합니다.
+            //            Member member = memberRepository
+            //                    .findById(memberId)
+            //                    .orElseThrow(() -> new ServiceException("AUTH-401", "존재하지 않는 회원입니다."));
+            //
+            //            if (member.getStatus() == Member.MemberStatus.DELETED) {
+            //                throw new ServiceException("AUTH-401", "탈퇴한 회원입니다.");
+            //            }
 
             // 5) Spring Security 인증 객체 생성
             var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
@@ -104,16 +108,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             filterChain.doFilter(request, response);
-
-        } catch (ServiceException se) {
-            // 우리가 의도적으로 던진 401(탈퇴/없음 등)은 메시지 유지
-            throw se;
         } catch (Exception e) {
             // 토큰 위조/만료/파싱 실패
-            throw new ServiceException("AUTH-401", "유효하지 않은 토큰입니다.");
+            sendUnauthorizedResponse(response, e.getMessage());
         }
     }
 
+    // 프론트의 fetchWithAuth가 읽음. 내용은 아무거나
+    private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+        response.setContentType("application/json;charset=UTF-8");
+        String json = String.format("{\"resultCode\": \"AUTH-401\", \"msg\": \"%s\"}", message);
+        response.getWriter().write(json);
+    }
+
+    // TODO: JWTProvider에 있어야 더 좋을 것 같습니다.
     // Authorization: Bearer 토큰이 있으면 그걸 사용하고, 없으면 HttpOnly 쿠키(accessToken)에서 읽는다.
     private String resolveToken(HttpServletRequest request) {
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);

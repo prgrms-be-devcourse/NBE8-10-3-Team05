@@ -115,3 +115,6 @@ frontend/next-env.d.ts
 
 .idea/
 .DS_Store
+
+*.log
+backend/back/logs/

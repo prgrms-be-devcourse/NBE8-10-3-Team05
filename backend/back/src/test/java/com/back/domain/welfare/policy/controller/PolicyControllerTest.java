@@ -87,7 +87,11 @@ public class PolicyControllerTest {
     private void cleanupElasticsearch() throws Exception {
         if (elasticsearchClient.indices().exists(e -> e.index(INDEX)).value()) {
             elasticsearchClient.indices().delete(d -> d.index(INDEX));
-            Thread.sleep(500); // 삭제 안정화
+            int retry = 0;
+            while (elasticsearchClient.indices().exists(e -> e.index(INDEX)).value() && retry < 10) {
+                Thread.sleep(500);
+                retry++;
+            }
         }
     }
 

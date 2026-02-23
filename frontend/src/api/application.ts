@@ -3,16 +3,16 @@ import type {
   AddApplicationResponse,
   DeleteApplicationResponse,
 } from "@/types/policy";
+import {fetchWithAuth} from "@/api/apiAuth";
 
 // GET /api/v1/member/policy-aply/welfare-applications
 // 신청 내역 조회
 // 인증 필요: 쿠키 기반 (credentials: "include")
 export async function getApplications(): Promise<ApplicationItem[]> {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/member/policy-aply/welfare-applications`,
     {
       method: "GET",
-      credentials: "include",
     }
   );
 
@@ -30,11 +30,10 @@ export async function getApplications(): Promise<ApplicationItem[]> {
 export async function addApplication(
   policyId: number
 ): Promise<AddApplicationResponse> {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/member/policy-aply/welfare-application/${policyId}`,
     {
       method: "POST",
-      credentials: "include",
     }
   );
 
@@ -53,11 +52,10 @@ export async function addApplication(
 export async function deleteApplication(
   applicationId: number
 ): Promise<DeleteApplicationResponse> {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/member/policy-aply/welfare-application/${applicationId}`,
     {
       method: "PUT",
-      credentials: "include",
     }
   );
 

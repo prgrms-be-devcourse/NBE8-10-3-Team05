@@ -4,6 +4,7 @@ import {
   LawyerSearchRequest,
   LawyerPageResponse,
 } from "../types/center";
+import {fetchWithAuth} from "@/api/apiAuth";
 
 export class ApiError extends Error {
   constructor(
@@ -27,14 +28,13 @@ export async function searchCenters(
     signguNm: req.signguNm,
   });
 
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/welfare/center/location?${params.toString()}`,
     {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-      },
-      credentials: "include",
+      }
     }
   );
 
@@ -62,14 +62,13 @@ export async function searchLawyers(
     req.sort.forEach((s) => params.append("sort", s));
   }
 
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/welfare/center/location/lawyer?${params.toString()}`,
     {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-      },
-      credentials: "include",
+      }
     }
   );
 

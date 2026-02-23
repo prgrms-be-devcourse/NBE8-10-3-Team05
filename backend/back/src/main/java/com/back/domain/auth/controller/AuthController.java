@@ -19,7 +19,7 @@ public class AuthController {
     // 리프레시토큰 쿠키 검증해서 새 쿠키 내려주기
     @PostMapping("/reissue")
     public ResponseEntity<Void> reissue(HttpServletRequest request, HttpServletResponse response) {
-        response.addHeader("Set-Cookie", authService.reissueAccessTokenCookie(request));
+        authService.reissueAccessTokenCookie(request, response);
         return ResponseEntity.ok().build();
     }
 }

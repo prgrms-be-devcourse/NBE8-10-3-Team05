@@ -46,6 +46,9 @@ public class RefreshToken {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    // TODO: redis.delete(key)로 완전히 삭제하시던데
+    //      soft delete는 그럼 이제 안쓰시나요?
+
     /**
      * refresh token 폐기 시각
      *

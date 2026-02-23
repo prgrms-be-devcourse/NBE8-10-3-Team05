@@ -24,6 +24,7 @@ import com.back.domain.welfare.center.lawyer.repository.LawyerRepository;
 import com.back.domain.welfare.center.lawyer.service.LawyerCrawlerService;
 import com.back.domain.welfare.estate.dto.EstateFetchResponseDto;
 import com.back.domain.welfare.estate.entity.Estate;
+import com.back.domain.welfare.estate.entity.EstateRegionCache;
 import com.back.domain.welfare.estate.repository.EstateRepository;
 import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto;
 import com.back.domain.welfare.policy.entity.Policy;
@@ -48,17 +49,19 @@ public class BaseInitData {
     private final CenterRepository centerRepository;
     private final LawyerRepository lawyerRepository;
     private final LawyerCrawlerService lawyerCrawlerService;
+    private final EstateRegionCache estateRegionCache;
 
     private final ObjectMapper objectMapper;
 
     @Bean
     ApplicationRunner baseInitDataApplicationRunner() {
         return args -> {
-            self.initMember();
-            self.initPolicy();
-            self.initEstate();
-            self.initCenter();
-            self.initLawyer();
+            estateRegionCache.init();
+            // self.initMember();
+            // self.initPolicy();
+            // self.initEstate();
+            // self.initCenter();
+            // self.initLawyer();
         };
     }
 
@@ -162,7 +165,7 @@ public class BaseInitData {
             return;
         }
 
-        lawyerCrawlerService.crawlAllPages();
+        // lawyerCrawlerService.crawlAllPages();
         // lawyerCrawlerService.crawlMultiPages("서울", 1, 1);
 
         if (lawyerRepository.count() < 1) {

@@ -17,7 +17,7 @@ public class PolicyDocumentMapper {
 
     public PolicyDocument toDocument(Policy policy) {
         return PolicyDocument.builder()
-                .policyId(policy.getId() == null ? 0 : policy.getId())
+                .policyId(policy.getId())
                 .plcyNo(policy.getPlcyNo())
                 .plcyNm(policy.getPlcyNm())
 
@@ -45,27 +45,6 @@ public class PolicyDocumentMapper {
                 .description(buildDescription(policy.getPlcyExplnCn(), policy.getPlcySprtCn()))
                 .build();
     }
-
-    //    public PolicyDocument toDocumentBatch(Policy policy) {
-    //        try {
-    //            log.info("Starting mapping for bizId: {}", policy.getPlcyNo());
-    //
-    //            return PolicyDocument.builder()
-    //                .policyId(policy.getPlcyNo()) // 🚨 일단 숫지 ID 대신 bizId를 넣어보세요!
-    //                .plcyNo(policy.getPlcyNo())
-    //                .plcyNm(policy.getPlcyNm())
-    //                .minAge(parseInteger(policy.getSprtTrgtMinAge()))
-    //                .maxAge(parseInteger(policy.getSprtTrgtMaxAge()))
-    //                .ageLimited(parseBoolean(policy.getSprtTrgtAgeLmtYn()))
-    //                .regionCode(policy.getZipCd())
-    //                .description(buildDescription(policy.getPlcyExplnCn(), policy.getPlcySprtCn()))
-    //                .build();
-    //        } catch (Exception e) {
-    //            // 🚨 여기서 stackTrace를 찍어야 어디서 죽었는지 보입니다!
-    //            log.error("❌ 매핑 도중 진짜 에러 발생! 원인: ", e);
-    //            return null;
-    //        }
-    //    }
 
     /* ===== 유틸 메서드 ===== */
 

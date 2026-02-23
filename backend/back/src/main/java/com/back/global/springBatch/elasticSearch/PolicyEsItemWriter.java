@@ -34,25 +34,25 @@ public class PolicyEsItemWriter implements ItemWriter<Policy> {
         List<BulkOperation> ops = new ArrayList<>();
 
         for (Policy policy : chunk) {
-            log.info("🔍 처리 중인 Policy: bizId={}, title={}", policy.getPlcyNo(), policy.getPlcyNm());
+            log.debug("🔍 처리 중인 Policy: bizId={}, title={}", policy.getId(), policy.getPlcyNm());
+
+            if (policy.getId() == null) {
+                throw new RuntimeException("❌ 매핑 실패!!!: Policy -> PolicyDocument 변환 결과가 null입니다.");
+            }
 
             PolicyDocument doc = policyDocumentMapper.toDocument(policy);
-            if (doc == null) {
-                // 여기서 왜 null인지 확인하기 위해 필드들을 찍어봅니다.
-                log.error("❌ 매핑 실패! Policy 상세: bizId={}, title={}", policy.getPlcyNo(), policy.getPlcyNm());
-            }
 
             if (doc == null || doc.getPolicyId() == null) {
                 log.error("❌ 매핑 실패: Policy -> PolicyDocument 변환 결과가 null입니다.");
                 continue;
             }
-            log.info("✅ 변환 성공: Document ID로 사용할 값 = {}", policy.getPlcyNo());
+            log.debug("✅ 변환 성공: Document ID로 사용할 값 = {}", policy.getId());
 
             ops.add(BulkOperation.of(b -> b.index(
-                    i -> i.index(INDEX).id(String.valueOf(doc.getPlcyNo())).document(doc))));
+                    i -> i.index(INDEX).id(String.valueOf(doc.getPolicyId())).document(doc))));
         }
 
-        // 🚨 [가장 중요] 빈 요청 방어
+        // 빈 요청 방어
         if (ops.isEmpty()) {
             log.warn("⚠️ 전송할 데이터가 없습니다 (ops is empty). Bulk 요청을 취소합니다.");
             return;
@@ -67,7 +67,7 @@ public class PolicyEsItemWriter implements ItemWriter<Policy> {
                         resp.took(),
                         resp.items().size());
             } else {
-                log.info(
+                log.debug(
                         "Elasticsearch bulk reindex completed. took={}, items={}",
                         resp.took(),
                         resp.items().size());
@@ -77,6 +77,6 @@ public class PolicyEsItemWriter implements ItemWriter<Policy> {
             throw new RuntimeException(e);
         }
 
-        log.info("Elasticsearch에 {}개의 데이터 동기화 완료...", chunk.size());
+        log.debug("Elasticsearch에 {}개의 데이터 동기화 완료...", chunk.size());
     }
 }

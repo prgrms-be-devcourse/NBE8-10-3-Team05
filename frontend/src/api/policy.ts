@@ -1,6 +1,7 @@
 import type { PolicyDocument, PolicySearchRequest } from "@/types/policy";
 import type { ApiErrorResponse } from "@/types/member";
 import { ApiError } from "@/api/member";
+import {fetchWithAuth} from "@/api/apiAuth";
 
 // GET /api/v1/welfare/policy/search
 export async function searchPolicies(
@@ -32,9 +33,8 @@ export async function searchPolicies(
   const queryString = query.toString();
   const url = `/api/v1/welfare/policy/search${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
+  const response = await fetchWithAuth(url, {
+    method: "GET"
   });
 
   if (!response.ok) {

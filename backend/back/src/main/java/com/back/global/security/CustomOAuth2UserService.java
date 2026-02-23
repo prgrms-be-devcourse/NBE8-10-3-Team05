@@ -48,7 +48,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         // SuccessHandler에서 쿠키 발급할 때 memberId가 필요하므로
         // attributes에 우리 memberId를 넣어둔다.
+        // TODO: 미리 token을 만드는데 필요한 id, role까지 넣어둔다면 success에서 db를 다시 조회할 필요는 없을 것 같습니다.
         attributes.put("memberId", member.getId());
+        attributes.put("memberRole", member.getRole());
+        attributes.put("memberStatus", member.getStatus());
 
         // 권한은 최소 USER로 넣어도 되고, 비워도 되는데
         // 일반적으로는 ROLE_USER 넣는 게 디버깅에 편함

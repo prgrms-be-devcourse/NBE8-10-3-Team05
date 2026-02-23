@@ -18,12 +18,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.infrastructure.item.database.JpaItemWriter;
 import org.springframework.batch.test.JobOperatorTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -38,6 +40,9 @@ import com.back.global.springBatch.center.CenterApiItemReader;
 @SpringBatchTest
 @ActiveProfiles("test")
 class BatchConfigTest {
+
+    @Autowired
+    @Qualifier("fetchApiJob") private Job fetchAPiJob; // 이 'job'이 주입되어야 jobOperatorTestUtils 내부가 채워집니다.
 
     // test : contextLoads 에서 확인가능하듯이, 실제로는 정상적으로 주입받음에도
     // IDE는 오류로 판단하기때문에 @SuppressWarnings
@@ -69,6 +74,7 @@ class BatchConfigTest {
 
     @BeforeEach
     void clearMetadata() {
+        jobOperatorTestUtils.setJob(fetchAPiJob);
         CenterApiResponseDto mockResponse = new CenterApiResponseDto(1, 1, 1, 1, 1, List.of());
         // 진짜 api를 호출하지 않도록 잡아준다.
         // enient()를 붙이면 "안 써도 괜찮으니까 일단 설정해 둬"라는 뜻이 되어 에러 없이 통과

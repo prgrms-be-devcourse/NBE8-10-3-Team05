@@ -4,13 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(
-        name = "lawyer",
-        uniqueConstraints = {
-            @UniqueConstraint(
-                    name = "uk_lawyer_name_corp",
-                    columnNames = {"name", "corporation"})
-        }) // name + corporation 로 같은 노무사인지 판단 -> 중복 방지
 @Getter
 @Builder
 @AllArgsConstructor
@@ -18,8 +11,7 @@ import lombok.*;
 public class Lawyer {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @Column(nullable = false)
     private String name;
@@ -31,4 +23,8 @@ public class Lawyer {
     // 시/도
     private String districtArea2;
     // 군/구
+
+    public void generateId() {
+        this.id = String.format("%s_%s_%s_%s", this.name, this.corporation, this.districtArea1, this.districtArea2);
+    }
 }

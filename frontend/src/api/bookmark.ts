@@ -1,11 +1,11 @@
 import type { BookmarkPolicyResponse, BookmarkUpdateResponse } from "@/types/policy";
+import {fetchWithAuth} from "@/api/apiAuth";
 
 // GET /api/v1/member/bookmark/welfare-bookmarks
 // 인증 필요: 쿠키 기반 (credentials: "include")
 export async function getBookmarks(): Promise<BookmarkPolicyResponse> {
-  const response = await fetch(`/api/v1/member/bookmark/welfare-bookmarks`, {
-    method: "GET",
-    credentials: "include",
+  const response = await fetchWithAuth(`/api/v1/member/bookmark/welfare-bookmarks`, {
+    method: "GET"
   });
 
   const data: BookmarkPolicyResponse = await response.json();
@@ -16,11 +16,10 @@ export async function getBookmarks(): Promise<BookmarkPolicyResponse> {
 // 북마크 토글 (추가/제거)
 // 인증 필요: 쿠키 기반 (credentials: "include")
 export async function toggleBookmark(policyId: number): Promise<BookmarkUpdateResponse> {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/member/bookmark/welfare-bookmarks/${policyId}`,
     {
       method: "POST",
-      credentials: "include",
     }
   );
 

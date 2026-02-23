@@ -47,7 +47,7 @@ public class EstateApiItemReader extends AbstractPagingItemReader<EstateDto> {
                 // 현재 선택된 키로 API 호출 (페이지 번호 전달)
 
                 EstateFetchRequestDto requestDto = EstateFetchRequestDto.builder()
-                        .pageNo(1)
+                        .pageNo(getPage() + 1)
                         .numOfRows(getPageSize())
                         .build();
                 EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);

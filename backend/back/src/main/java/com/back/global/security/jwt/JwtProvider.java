@@ -37,6 +37,19 @@ public class JwtProvider {
                 .compact();
     }
 
+    public String issueAccessTokenWithoutEmail(long memberId, String role) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(accessTokenExpSeconds);
+
+        return Jwts.builder()
+                .subject(String.valueOf(memberId))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(exp))
+                .claim("role", role)
+                .signWith(key)
+                .compact();
+    }
+
     // 토큰 검증 + Claims 추출
     // 서명 검증
     // 만료 검증(exp)

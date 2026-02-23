@@ -41,6 +41,9 @@ public class MemberService {
 
     public JoinResponse join(JoinRequest req) {
 
+        // TODO: service단에서의 이중방어인가요?
+        //      controller에 @Valid 사용하면 더 좋을 듯 합니다.
+
         // 요청값 검증
         if (req == null) {
             throw new ServiceException("MEMBER_400", "요청 바디가 비어 있습니다");
@@ -54,6 +57,8 @@ public class MemberService {
         if (req.name() == null || req.name().isBlank()) {
             throw new ServiceException("MEMBER_400", "이름은 필수 입력값입니다");
         }
+
+        // TODO: email 중복시 "[MEMBER_409] 이미 사용 중인 이메일입니다" 코드까지 사용자에게 보입니다.
 
         // 이메일 중복 체크
         if (memberRepository.existsByEmailAndStatus(req.email(), Member.MemberStatus.ACTIVE)) {
@@ -74,11 +79,13 @@ public class MemberService {
 
     @Transactional
     public void completeSocialSignup(CompleteSocialSignupRequest req) {
-        if (req == null) throw new ServiceException("MEMBER-400", "요청 바디가 비었습니다.");
 
+        // TODO: controller 단에서 @Valid 사용하면 더 좋을 듯 합니다.
+        if (req == null) throw new ServiceException("MEMBER-400", "요청 바디가 비었습니다.");
         if (req.rrnFront() == null) throw new ServiceException("MEMBER-400", "rrnFront는 필수입니다.");
         if (req.rrnBackFirst() == null) throw new ServiceException("MEMBER-400", "rrnBackFirst는 필수입니다.");
 
+        // 가지고있는 JWT로 Filter에서 member를 받아서 쓴다.
         Member member = actorProvider.getActor();
 
         // 소셜 미완성 유저만 완료 처리
@@ -91,6 +98,7 @@ public class MemberService {
 
     @Transactional
     public LoginResponse login(LoginRequest req, HttpServletResponse response) {
+        // TODO: controller 단에서 @Valid 사용하면 더 좋을 듯 합니다.
         if (req.getEmail() == null || req.getEmail().isBlank()) {
             throw new ServiceException("AUTH-400", "email은 필수입니다.");
         }
@@ -185,6 +193,7 @@ public class MemberService {
         return null;
     }
 
+    // TODO: 이걸 쓰는 곳이 한곳인듯 한데 거기서 memberRepository 부르고 여기는 삭제하는게 더 좋지 않을까요
     @Transactional(readOnly = true)
     public Optional<Member> findById(Long id) {
         return memberRepository.findById(id);
@@ -230,12 +239,14 @@ public class MemberService {
     //        return accessToken;
     //    }
 
+    // TODO: 이 함수는 jwtProvider에 들어가야하지 않을까요?
     @Transactional
     public String issueLoginCookies(Member member, HttpServletResponse response) {
 
         // =========================
         // 1) AccessToken 발급
         // =========================
+        // TODO: 안쓰는 email은 지우는게 좋을 것 같습니다.
         String accessToken = jwtProvider.issueAccessToken(
                 member.getId(), member.getEmail() == null ? "" : member.getEmail(), String.valueOf(member.getRole()));
 
@@ -244,6 +255,8 @@ public class MemberService {
         // =========================
         // rawRefreshToken = 쿠키에 심는 "원문"
         // ※ DB/Redis 어디에도 원문을 저장하지 않는게 보안상 안전함
+
+        // TODO: 그냥 UUID쓰셔도될 듯 합니다.
         String rawRefreshToken = RefreshTokenGenerator.generate();
 
         // tokenHash = 서버 저장소(DB/Redis)에 저장하는 "식별자"
@@ -272,6 +285,26 @@ public class MemberService {
                 "Set-Cookie", authCookieService.refreshCookie(rawRefreshToken, Duration.ofDays(REFRESH_DAYS)));
 
         return accessToken;
+    }
+
+    @Transactional
+    public void issueLoginCookiesWithoutMemberEntity(
+            Long memberId, Member.Role memberRole, HttpServletResponse response) {
+
+        String accessToken = jwtProvider.issueAccessTokenWithoutEmail(memberId, String.valueOf(memberRole));
+
+        String rawRefreshToken = RefreshTokenGenerator.generate();
+
+        String refreshTokenHash = TokenHasher.sha256Hex(rawRefreshToken);
+
+        redisRefreshTokenStore.save(
+                refreshTokenHash, memberId, Duration.ofDays(REFRESH_DAYS) // 14일
+                );
+
+        response.addHeader("Set-Cookie", authCookieService.accessCookie(accessToken, Duration.ofMinutes(20)));
+
+        response.addHeader(
+                "Set-Cookie", authCookieService.refreshCookie(rawRefreshToken, Duration.ofDays(REFRESH_DAYS)));
     }
 
     @Transactional

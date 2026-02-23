@@ -20,9 +20,11 @@ import org.springframework.web.client.ResourceAccessException;
 import com.back.domain.welfare.center.lawyer.entity.Lawyer;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LawyerCrawlerService {
     private final String SEARCH_URL = "https://www.youthlabor.co.kr/company/search?text=&area=%s&area2=&page=%d";
     // 시/도인 area1, 페이지 숫자인 page를 넣어서 찾을 수 있도록
@@ -89,15 +91,21 @@ public class LawyerCrawlerService {
 
         String url = String.format(SEARCH_URL, area1, startPage);
         Elements rows = crawlAndSelectRows(url);
-        // 테이블 내부 각각 행의 정보을 받아옴
 
         for (Element row : rows) {
             // 열 별로 순회하면서 파싱
             Lawyer lawyer = parseRowToLawyer(row, area1);
 
-            if (lawyer != null) {
-                lawyerList.add(lawyer);
+            if (lawyer == null) {
+                continue;
             }
+
+            // 법무법인이 없는 노무사는 어차피 연락할 수단도 없기때문에 제거
+            if (lawyer.getCorporation() == null || lawyer.getCorporation().isEmpty()) {
+                continue;
+            }
+
+            lawyerList.add(lawyer);
         }
 
         return lawyerList;
@@ -116,6 +124,7 @@ public class LawyerCrawlerService {
         String area2 = cols.get(0).text();
 
         return Lawyer.builder()
+                .id(String.format("%s_%s_%s_%s", name, corporation, area1, area2))
                 .name(name)
                 .corporation(corporation)
                 .districtArea1(area1)

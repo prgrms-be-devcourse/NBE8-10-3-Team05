@@ -2,7 +2,7 @@ package com.back.domain.welfare.center.lawyer.dto;
 
 import com.back.domain.welfare.center.lawyer.entity.Lawyer;
 
-public record LawyerRes(Long id, String name, String corporation, String districtArea1, String districtArea2) {
+public record LawyerRes(String id, String name, String corporation, String districtArea1, String districtArea2) {
     public LawyerRes(Lawyer lawyer) {
         this(
                 lawyer.getId(),

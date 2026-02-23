@@ -16,6 +16,7 @@ public class SidoNormalizer {
         String trimmed = sido.trim();
 
         return switch (trimmed) {
+            case "서울시" -> "서울";
             case "충북" -> "충청북";
             case "충남" -> "충청남";
             // "전북특별자치도" 떄문에 전북은 적용X

@@ -9,6 +9,7 @@ import type {
   MemberDetailReq,
   ApiErrorResponse,
 } from "@/types/member";
+import {fetchWithAuth} from "@/api/apiAuth";
 
 export class ApiError extends Error {
   constructor(
@@ -18,47 +19,6 @@ export class ApiError extends Error {
     super(`${resultCode}: ${msg}`);
     this.name = "ApiError";
   }
-}
-
-// accessToken 재발급 요청
-// POST /api/v1/auth/reissue
-async function reissue(): Promise<boolean> {
-  const response = await fetch(`/api/v1/auth/reissue`, {
-    method: "POST",
-    credentials: "include",
-  });
-  return response.ok;
-}
-
-// 인증이 필요한 API 호출 래퍼
-// 401 발생 시 → reissue → 성공하면 원래 요청 재시도
-async function fetchWithAuth(
-  url: string,
-  options: RequestInit
-): Promise<Response> {
-  const response = await fetch(url, {
-    ...options,
-    credentials: "include",
-  });
-
-  if (response.status === 401) {
-    console.log("[fetchWithAuth] 401 감지, reissue 시도...");
-    try {
-      const reissued = await reissue();
-      console.log("[fetchWithAuth] reissue 결과:", reissued);
-      if (reissued) {
-        console.log("[fetchWithAuth] 원래 요청 재시도...");
-        return fetch(url, {
-          ...options,
-          credentials: "include",
-        });
-      }
-    } catch (reissueErr) {
-      console.error("[fetchWithAuth] reissue 실패:", reissueErr);
-    }
-  }
-
-  return response;
 }
 
 // ===== 회원가입 (인증 불필요) =====

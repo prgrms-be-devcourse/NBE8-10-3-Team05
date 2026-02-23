@@ -1,7 +1,11 @@
 package com.back.global.config;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.builder.SimpleJobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.infrastructure.item.database.JpaItemWriter;
@@ -56,18 +60,13 @@ public class BatchConfig {
 
     @Bean
     public Job fetchApiJob(
-            JobRepository jobRepository,
-            Step fetchCenterApiStep,
-            Step fetchEstateApiStep,
-            Step fetchPolicyApiStep,
-            Step fetchLawyerApiStep) {
+            JobRepository jobRepository, Step fetchCenterApiStep, Step fetchEstateApiStep, Step fetchPolicyApiStep) {
 
         return new JobBuilder("fetchApiJob", jobRepository)
                 .listener(batchJobListener)
                 .start(fetchCenterApiStep)
                 .next(fetchEstateApiStep)
                 .next(fetchPolicyApiStep)
-                // .next(fetchLawyerApiStep)
                 .build();
     }
 
@@ -90,8 +89,26 @@ public class BatchConfig {
     }
 
     @Bean
-    public Step fetchLawyerApiStep(BatchStepCrawlFactory factory) {
-        return factory.<Lawyer, Lawyer>createCrawlStep(
-                "fetchLawyerApiStep", lawyerApiItemReader, null, lawyerJpaItemWriter);
+    public Job fetchLawyerJob(JobRepository jobRepository, BatchStepCrawlFactory factory) {
+        List<String> regions = Arrays.asList(
+                "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주");
+
+        SimpleJobBuilder builder = new JobBuilder("fetchLawyerJob", jobRepository)
+                .start(createCrawlingStep(factory, regions.get(0))); // 첫 지역 시작
+
+        for (int i = 1; i < regions.size(); i++) {
+            builder.next(createCrawlingStep(factory, regions.get(i))); // 다음 지역들 연결
+        }
+
+        return builder.listener(batchJobListener).build();
+    }
+
+    private Step createCrawlingStep(BatchStepCrawlFactory factory, String region) {
+        // Step 이름에 지역명을 넣어 구분 (중요!)
+        return factory.createCrawlStep(
+                region,
+                lawyerApiItemReader, // @StepScope가 동작하여 런타임에 region 주입됨
+                null,
+                lawyerJpaItemWriter);
     }
 }

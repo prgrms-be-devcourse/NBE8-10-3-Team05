@@ -34,6 +34,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const initAuth = async () => {
+
+        const currentPath = window.location.pathname;
+        const isGuestPage = ["/login", "/join"].includes(currentPath);
+        const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+
+        // 이미 로그인한 사용자가 로그인/회원가입 페이지에 들어온 경우만 메인으로!
+        if (stored && isGuestPage) {
+            window.location.href = "/";
+            return;
+        }
+
       try {
         // 1) localStorage 기반 복원
         const stored =
@@ -47,8 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!cancelled) {
               setUser(parsed);
             }
-            // 로컬에서 복원되면 서버 조회는 생략
-            return;
+              // 이미 로그인 정보를 복원했고, 로그인 페이지에 있다면 메인으로 리다이렉트
+              if(isGuestPage){
+                  window.location.href = "/";
+                  return;
+              }
+
           } catch {
             if (!cancelled && typeof window !== "undefined") {
               localStorage.removeItem(STORAGE_KEY);
@@ -56,29 +71,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // 2) 서버 세션 기반 복원 (소셜 로그인 포함)
-        try {
-          const detail = await getMemberDetail();
-          if (!cancelled) {
-            const serverUser: User = {
-              name: detail.name,
-              // memberId는 MemberDetailRes 계약에 없으므로 설정하지 않음
-            };
-            setUser(serverUser);
-            if (typeof window !== "undefined") {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(serverUser));
+        if (!isGuestPage) {
+            // 2) 서버 세션 기반 복원 (소셜 로그인 포함)
+            try {
+                const detail = await getMemberDetail();
+                if (!cancelled && detail) {
+                    const serverUser: User = {
+                        name: detail.name,
+                        // memberId는 MemberDetailRes 계약에 없으므로 설정하지 않음
+                    };
+                    setUser(serverUser);
+                    if (typeof window !== "undefined") {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverUser));
+                    }
+                }
+            } catch {
+                if (!cancelled) {
+                    setUser(null);
+                    // 유령 데이터 삭제
+                    localStorage.removeItem(STORAGE_KEY);
+                }
             }
-          }
-        } catch {
-          if (!cancelled) {
-            setUser(null);
-          }
         }
+
       } finally {
         if (!cancelled) {
           setIsLoading(false);
         }
       }
+
+
+
     };
 
     void initAuth();
