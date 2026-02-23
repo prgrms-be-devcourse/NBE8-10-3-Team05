@@ -12,8 +12,6 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "8.1.0"
     id("checkstyle")
-    kotlin("jvm") version "2.2.0"
-    kotlin("plugin.spring") version "2.2.0"
 }
 
 group = "com"
@@ -156,9 +154,6 @@ dependencies {
     implementation("co.elastic.clients:elasticsearch-java:8.11.3")
     implementation("org.elasticsearch.client:elasticsearch-rest-client:8.11.3")
     implementation("org.apache.httpcomponents.client5:httpclient5")
-    implementation(kotlin("stdlib"))
-
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
 
 }
 
