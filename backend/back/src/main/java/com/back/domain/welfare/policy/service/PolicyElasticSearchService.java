@@ -46,7 +46,6 @@ public class PolicyElasticSearchService {
                 esClient.indices().exists(ExistsRequest.of(r -> r.index(INDEX))).value();
 
         if (exists) {
-            esClient.indices().delete(d -> d.index(INDEX));
             return;
         }
 
