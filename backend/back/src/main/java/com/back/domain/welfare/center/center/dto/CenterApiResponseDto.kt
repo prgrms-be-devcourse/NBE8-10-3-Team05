@@ -9,7 +9,7 @@ data class CenterApiResponseDto(
     @JvmField val totalCount: Int,
     val currentCount: Int,
     val matchCount: Int,
-    @JvmField val data: MutableList<CenterDto?>?
+    @JvmField val data: List<CenterDto>
 ) {
     @JvmRecord
     data class CenterDto(
