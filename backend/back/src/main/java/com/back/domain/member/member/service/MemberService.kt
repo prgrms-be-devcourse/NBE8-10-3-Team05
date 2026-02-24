@@ -1,4 +1,4 @@
-
+package com.back.domain.member.member.service
 
 import com.back.domain.auth.store.RedisRefreshTokenStore
 import com.back.domain.auth.util.RefreshTokenGenerator
@@ -6,7 +6,6 @@ import com.back.domain.auth.util.TokenHasher
 import com.back.domain.member.member.dto.*
 import com.back.domain.member.member.entity.Member
 import com.back.domain.member.member.repository.MemberRepository
-import com.back.domain.member.member.service.AuthCookieService
 import com.back.global.exception.ServiceException
 import com.back.global.security.jwt.JwtProvider
 import com.back.standard.util.ActorProvider
