@@ -41,9 +41,8 @@ public class BookmarkService {
             return "북마크가 해제되었습니다.";
         } else {
             // 북마크가 없으면 새로 생성
-            Bookmark newBookmark =
-                    Bookmark.builder().applicant(member).policy(policy).build();
-            bookmarkRepository.save(newBookmark);
+            Bookmark bookmark = new Bookmark(policy, member); // 생성자로 주입
+            bookmarkRepository.save(bookmark);
             return "북마크가 추가되었습니다.";
         }
     }

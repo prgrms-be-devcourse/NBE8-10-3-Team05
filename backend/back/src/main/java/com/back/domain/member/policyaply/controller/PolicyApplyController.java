@@ -75,6 +75,6 @@ public class PolicyApplyController {
 
         DeleteApplicationResponseDto deleteApplicationResponseDto = policyApplyService.deleteApplication(member, id);
 
-        return ResponseEntity.status(deleteApplicationResponseDto.code()).body(deleteApplicationResponseDto);
+        return ResponseEntity.status(deleteApplicationResponseDto.code).body(deleteApplicationResponseDto);
     }
 }

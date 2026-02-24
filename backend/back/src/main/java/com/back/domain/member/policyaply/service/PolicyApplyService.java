@@ -31,7 +31,7 @@ public class PolicyApplyService {
         Policy policy = policyRepository.findPolicyById(policyId);
 
         if (policy == null) {
-            return null; // Policy가 존재하지 않으면 null 반환
+            return null;
         }
 
         Application application = new Application();

@@ -150,8 +150,9 @@ public class BaseInitData {
         try (InputStream is = getClass().getResourceAsStream("/json/center_example.json")) {
             CenterApiResponseDto response = objectMapper.readValue(is, CenterApiResponseDto.class);
 
-            List<Center> centerList =
-                    response.getData().stream().map(CenterApiResponseDtoKt::dtoToEntity).toList();
+            List<Center> centerList = response.getData().stream()
+                    .map(CenterApiResponseDtoKt::dtoToEntity)
+                    .toList();
 
             centerRepository.saveAll(centerList);
 

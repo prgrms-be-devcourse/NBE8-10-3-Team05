@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
-import co.elastic.clients.elasticsearch._types.HealthStatus;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +22,7 @@ import com.back.domain.welfare.policy.repository.PolicyRepository;
 import com.back.domain.welfare.policy.service.PolicyElasticSearchService;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.HealthStatus;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -79,24 +80,26 @@ public class PolicyControllerTest {
         // 5️⃣ index 생성 보장
         policyElasticSearchService.ensureIndex();
 
-        elasticsearchClient.cluster().health(h -> h
-            .index(INDEX)
-            .waitForStatus(HealthStatus.Yellow)
-            .timeout(t -> t.time("5s"))
-        );
+        elasticsearchClient
+                .cluster()
+                .health(h -> h.index(INDEX).waitForStatus(HealthStatus.Yellow).timeout(t -> t.time("5s")));
 
         // 6️⃣ reindex
         policyElasticSearchService.reindexAllFromDb();
 
-        elasticsearchClient.indices().refresh(r -> r.index(INDEX));
+        try {
+            elasticsearchClient.indices().refresh(r -> r.index(INDEX));
+        } catch (ElasticsearchException e) {
+            if (e.getMessage().contains("index_not_found_exception")) {
+                // 인덱스 생성 후 재시도
+                elasticsearchClient.indices().create(c -> c.index(INDEX));
+            }
+        }
     }
 
     private void cleanupElasticsearch() throws Exception {
         if (elasticsearchClient.indices().exists(e -> e.index(INDEX)).value()) {
-            elasticsearchClient.deleteByQuery(d -> d
-                .index(INDEX)
-                .query(q -> q.matchAll(m -> m))
-            );
+            elasticsearchClient.deleteByQuery(d -> d.index(INDEX).query(q -> q.matchAll(m -> m)));
             // 삭제 후 즉시 반영을 위해 refresh
             elasticsearchClient.indices().refresh(r -> r.index(INDEX));
         }
