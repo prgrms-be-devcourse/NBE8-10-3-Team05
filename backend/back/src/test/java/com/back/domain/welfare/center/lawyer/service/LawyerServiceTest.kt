@@ -1,4 +1,4 @@
-package com.back.domain.welfare.center.service
+package com.back.domain.welfare.center.lawyer.service
 
 import com.back.domain.welfare.center.lawyer.dto.LawyerReq
 import com.back.domain.welfare.center.lawyer.dto.LawyerRes
