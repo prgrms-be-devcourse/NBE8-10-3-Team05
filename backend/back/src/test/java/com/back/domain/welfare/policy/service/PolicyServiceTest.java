@@ -74,7 +74,7 @@ public class PolicyServiceTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result).hasSize(1);
-        assertThat(result.getFirst().plcyNm()).isEqualTo("Test Policy");
+        assertThat(result.getFirst().getPlcyNm()).isEqualTo("Test Policy");
 
         // repository의 search 메서드가 정확히 1번 호출되었는지 검증
         verify(policyRepository, times(1)).search(requestDto);

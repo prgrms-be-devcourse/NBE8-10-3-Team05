@@ -35,10 +35,10 @@ public class PolicyApiClient {
         try {
             String requestUrl = properties.url()
                     + "?apiKeyNm=" + properties.key()
-                    + "&pageType=" + requestDto.pageType()
+                    + "&pageType=" + requestDto.getPageType()
                     + "&pageSize=" + pageSize
                     + "&pageNum=" + pageNum
-                    + "&rtnType=" + requestDto.rtnType();
+                    + "&rtnType=" + requestDto.getRtnType();
 
             String response = webClient
                     .get()

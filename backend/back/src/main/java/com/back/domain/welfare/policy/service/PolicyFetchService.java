@@ -2,6 +2,7 @@ package com.back.domain.welfare.policy.service;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,7 +39,7 @@ public class PolicyFetchService {
         // 1페이지 호출
         PolicyFetchResponseDto fetchResponse = policyApiClient.fetchPolicyPage(requestDto, pageNum, pageSize);
 
-        int totalCnt = fetchResponse.result().pagging().totCount();
+        int totalCnt = fetchResponse.result().getPagging().getTotCount();
         int totalPages = (int) Math.ceil((double) totalCnt / pageSize);
 
         // 1페이지 저장
@@ -59,16 +60,29 @@ public class PolicyFetchService {
         policyElasticSearchService.reindexAllFromDb();
     }
 
-    private void savePolicies(List<PolicyFetchResponseDto.PolicyItem> items) {
+    private void savePolicies(List<PolicyItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+
+        // null 요소 방어 (혹시 모를 API 오류 대비)
+        List<PolicyItem> safeItems = items.stream()
+                .filter(Objects::nonNull)
+                .toList();
+
         // 1. 페이지 내 plcyNo 수집
-        Set<String> pagePlcyNos = items.stream().map(PolicyItem::plcyNo).collect(Collectors.toSet());
+        Set<String> pagePlcyNos = safeItems.stream()
+                .map(PolicyItem::getPlcyNo)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         // 2. DB에 이미 존재하는 plcyNo 조회
         Set<String> existingPlcyNos = policyRepository.findExistingPlcyNos(pagePlcyNos);
 
         // 3. 페이지 내 중복 + DB 중복 제거
-        List<Policy> policies = items.stream()
-                .filter(item -> !existingPlcyNos.contains(item.plcyNo()))
+        List<Policy> policies = safeItems.stream()
+                .filter(item -> item.getPlcyNo() != null)
+                .filter(item -> !existingPlcyNos.contains(item.getPlcyNo()))
                 .map(this::toEntity)
                 .toList();
 
@@ -80,34 +94,34 @@ public class PolicyFetchService {
         policyRepository.saveAll(policies);
     }
 
-    private Policy toEntity(PolicyFetchResponseDto.PolicyItem item) {
+    private Policy toEntity(PolicyItem item) {
         try {
             return Policy.builder()
-                    .plcyNo(item.plcyNo())
-                    .plcyNm(item.plcyNm())
-                    .plcyKywdNm(item.plcyKywdNm())
-                    .plcyExplnCn(item.plcyExplnCn())
-                    .plcySprtCn(item.plcySprtCn())
-                    .sprvsnInstCdNm(item.sprvsnInstCdNm())
-                    .operInstCdNm(item.operInstCdNm())
-                    .aplyPrdSeCd(item.aplyPrdSeCd())
-                    .bizPrdBgngYmd(item.bizPrdBgngYmd())
-                    .bizPrdEndYmd(item.bizPrdEndYmd())
-                    .plcyAplyMthdCn(item.plcyAplyMthdCn())
-                    .aplyUrlAddr(item.aplyUrlAddr())
-                    .sbmsnDcmntCn(item.sbmsnDcmntCn())
-                    .sprtTrgtMinAge(item.sprtTrgtMinAge())
-                    .sprtTrgtMaxAge(item.sprtTrgtMaxAge())
-                    .sprtTrgtAgeLmtYn(item.sprtTrgtAgeLmtYn())
-                    .mrgSttsCd(item.mrgSttsCd())
-                    .earnCndSeCd(item.earnCndSeCd())
-                    .earnMinAmt(item.earnMinAmt())
-                    .earnMaxAmt(item.earnMaxAmt())
-                    .zipCd(item.zipCd())
-                    .jobCd(item.jobCd())
-                    .schoolCd(item.schoolCd())
-                    .aplyYmd(item.aplyYmd())
-                    .sBizCd(item.sbizCd())
+                    .plcyNo(item.getPlcyNo())
+                    .plcyNm(item.getPlcyNm())
+                    .plcyKywdNm(item.getPlcyKywdNm())
+                    .plcyExplnCn(item.getPlcyExplnCn())
+                    .plcySprtCn(item.getPlcySprtCn())
+                    .sprvsnInstCdNm(item.getSprvsnInstCdNm())
+                    .operInstCdNm(item.getOperInstCdNm())
+                    .aplyPrdSeCd(item.getAplyPrdSeCd())
+                    .bizPrdBgngYmd(item.getBizPrdBgngYmd())
+                    .bizPrdEndYmd(item.getBizPrdEndYmd())
+                    .plcyAplyMthdCn(item.getPlcyAplyMthdCn())
+                    .aplyUrlAddr(item.getAplyUrlAddr())
+                    .sbmsnDcmntCn(item.getSbmsnDcmntCn())
+                    .sprtTrgtMinAge(item.getSprtTrgtMinAge())
+                    .sprtTrgtMaxAge(item.getSprtTrgtMaxAge())
+                    .sprtTrgtAgeLmtYn(item.getSprtTrgtAgeLmtYn())
+                    .mrgSttsCd(item.getMrgSttsCd())
+                    .earnCndSeCd(item.getEarnCndSeCd())
+                    .earnMinAmt(item.getEarnMinAmt())
+                    .earnMaxAmt(item.getEarnMaxAmt())
+                    .zipCd(item.getZipCd())
+                    .jobCd(item.getJobCd())
+                    .schoolCd(item.getSchoolCd())
+                    .aplyYmd(item.getAplyYmd())
+                    .sBizCd(item.getSbizCd())
                     .rawJson(objectMapper.writeValueAsString(item))
                     .build();
         } catch (Exception e) {

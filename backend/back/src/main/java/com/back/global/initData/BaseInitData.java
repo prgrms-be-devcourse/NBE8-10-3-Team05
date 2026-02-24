@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Random;
 
-import com.back.domain.welfare.center.center.dto.CenterApiResponseDtoKt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +18,7 @@ import com.back.domain.member.member.dto.JoinRequest;
 import com.back.domain.member.member.repository.MemberRepository;
 import com.back.domain.member.member.service.MemberService;
 import com.back.domain.welfare.center.center.dto.CenterApiResponseDto;
+import com.back.domain.welfare.center.center.dto.CenterApiResponseDtoKt;
 import com.back.domain.welfare.center.center.entity.Center;
 import com.back.domain.welfare.center.center.repository.CenterRepository;
 import com.back.domain.welfare.center.lawyer.repository.LawyerRepository;

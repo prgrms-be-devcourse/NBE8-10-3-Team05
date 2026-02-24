@@ -26,30 +26,30 @@ public class PolicyRepositoryImpl implements PolicyRepositoryCustom {
         BooleanBuilder builder = new BooleanBuilder();
 
         // 나이 조건
-        if (condition.sprtTrgtMinAge() != null) {
-            builder.and(policy.sprtTrgtMinAge.goe(condition.sprtTrgtMinAge().toString()));
+        if (condition.getSprtTrgtMinAge() != null) {
+            builder.and(policy.sprtTrgtMinAge.goe(condition.getSprtTrgtMinAge().toString()));
         }
-        if (condition.sprtTrgtMaxAge() != null) {
-            builder.and(policy.sprtTrgtMaxAge.loe(condition.sprtTrgtMaxAge().toString()));
+        if (condition.getSprtTrgtMaxAge() != null) {
+            builder.and(policy.sprtTrgtMaxAge.loe(condition.getSprtTrgtMaxAge().toString()));
         }
 
         // 우편번호, 학교, 직업 조건
-        if (condition.zipCd() != null) {
-            builder.and(policy.zipCd.eq(condition.zipCd()));
+        if (condition.getZipCd() != null) {
+            builder.and(policy.zipCd.eq(condition.getZipCd()));
         }
-        if (condition.schoolCd() != null) {
-            builder.and(policy.schoolCd.eq(condition.schoolCd()));
+        if (condition.getSchoolCd() != null) {
+            builder.and(policy.schoolCd.eq(condition.getSchoolCd()));
         }
-        if (condition.jobCd() != null) {
-            builder.and(policy.jobCd.eq(condition.jobCd()));
+        if (condition.getJobCd() != null) {
+            builder.and(policy.jobCd.eq(condition.getJobCd()));
         }
 
         // 소득 조건
-        if (condition.earnMinAmt() != null) {
-            builder.and(policy.earnMinAmt.goe(condition.earnMinAmt().toString()));
+        if (condition.getEarnMinAmt() != null) {
+            builder.and(policy.earnMinAmt.goe(condition.getEarnMinAmt().toString()));
         }
-        if (condition.earnMaxAmt() != null) {
-            builder.and(policy.earnMaxAmt.loe(condition.earnMaxAmt().toString()));
+        if (condition.getEarnMaxAmt() != null) {
+            builder.and(policy.earnMaxAmt.loe(condition.getEarnMaxAmt().toString()));
         }
 
         // Projection: PolicyResponseDto record에 맞게 select

@@ -1,10 +1,10 @@
 package com.back.global.springBatch.center;
 
-import com.back.domain.welfare.center.center.dto.CenterApiResponseDtoKt;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
 import com.back.domain.welfare.center.center.dto.CenterApiResponseDto;
+import com.back.domain.welfare.center.center.dto.CenterApiResponseDtoKt;
 import com.back.domain.welfare.center.center.entity.Center;
 
 @Component
