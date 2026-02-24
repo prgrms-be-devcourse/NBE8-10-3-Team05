@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
-import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,7 @@ import com.back.domain.welfare.policy.repository.PolicyRepository;
 import com.back.domain.welfare.policy.service.PolicyElasticSearchService;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.HealthStatus;
 
 @ActiveProfiles("test")
