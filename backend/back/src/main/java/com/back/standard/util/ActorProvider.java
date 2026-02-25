@@ -22,9 +22,9 @@ public class ActorProvider {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         if (auth == null
-            || !auth.isAuthenticated()
-            || auth.getPrincipal() == null
-            || "anonymousUser".equals(auth.getPrincipal())) {
+                || !auth.isAuthenticated()
+                || auth.getPrincipal() == null
+                || "anonymousUser".equals(auth.getPrincipal())) {
             throw new ServiceException("AUTH-401", "인증 정보가 없습니다.");
         }
 
@@ -39,7 +39,7 @@ public class ActorProvider {
 
         // get actor같은 연할을 하는 곳인데 강사님은 DB조회를 안하고 나는 DB조희를 함
         return memberRepository
-            .findById(memberId)
-            .orElseThrow(() -> new ServiceException("MEMBER-404", "존재하지 않는 회원입니다."));
+                .findById(memberId)
+                .orElseThrow(() -> new ServiceException("MEMBER-404", "존재하지 않는 회원입니다."));
     }
 }
