@@ -36,15 +36,12 @@ class MemberService(
         private const val REFRESH_DAYS = 14
     }
 
-    fun join(req: JoinRequest?): JoinResponse {
+    fun join(req: JoinRequest): JoinResponse {
 
         // TODO: service단에서의 이중방어인가요?
         //      controller에 @Valid 사용하면 더 좋을 듯 합니다.
 
         // 요청값 검증
-        if (req == null) {
-            throw ServiceException("MEMBER_400", "요청 바디가 비어 있습니다")
-        }
         if (req.email == null || req.email.isBlank()) {
             throw ServiceException("MEMBER_400", "이메일은 필수 입력값입니다")
         }
@@ -80,10 +77,9 @@ class MemberService(
     }
 
     @Transactional
-    fun completeSocialSignup(req: CompleteSocialSignupRequest?) {
+    fun completeSocialSignup(req: CompleteSocialSignupRequest) {
 
         // TODO: controller 단에서 @Valid 사용하면 더 좋을 듯 합니다.
-        if (req == null) throw ServiceException("MEMBER-400", "요청 바디가 비었습니다.")
         if (req.rrnFront == null) throw ServiceException("MEMBER-400", "rrnFront는 필수입니다.")
         if (req.rrnBackFirst == null) throw ServiceException("MEMBER-400", "rrnBackFirst는 필수입니다.")
 
@@ -199,10 +195,10 @@ class MemberService(
     }
 
     // TODO: 이걸 쓰는 곳이 한곳인듯 한데 거기서 memberRepository 부르고 여기는 삭제하는게 더 좋지 않을까요
-    @Transactional(readOnly = true)
-    fun findById(id: Long): Optional<Member> {
-        return memberRepository.findById(id)
-    }
+//    @Transactional(readOnly = true)
+//    fun findById(id: Long): Optional<Member> {
+//        return memberRepository.findById(id)
+//    }
 
     //    @Transactional
     //    public String issueLoginCookies(Member member, HttpServletResponse response) {
@@ -251,10 +247,8 @@ class MemberService(
         // =========================
         // 1) AccessToken 발급
         // =========================
-        // TODO: 안쓰는 email은 지우는게 좋을 것 같습니다.
         val accessToken = jwtProvider.issueAccessToken(
             requireNotNull(member.id),
-            member.email ?: "",
             member.role.toString()
         )
 
@@ -306,7 +300,7 @@ class MemberService(
         response: HttpServletResponse
     ) {
 
-        val accessToken = jwtProvider.issueAccessTokenWithoutEmail(memberId, memberRole.toString())
+        val accessToken = jwtProvider.issueAccessToken(memberId, memberRole.toString())
 
         val rawRefreshToken = RefreshTokenGenerator.generate()
 

@@ -117,6 +117,7 @@ class JwtAuthenticationFilter(
     }
 
     // TODO: JWTProvider에 있어야 더 좋을 것 같습니다.
+    // TODO: 토큰 발급이 아니라서 JWTProvider 부분이 아닌것 같습니다
     // Authorization: Bearer 토큰이 있으면 그걸 사용하고, 없으면 HttpOnly 쿠키(accessToken)에서 읽는다.
     private fun resolveToken(request: HttpServletRequest): String? {
         val authHeader = request.getHeader(HttpHeaders.AUTHORIZATION)
