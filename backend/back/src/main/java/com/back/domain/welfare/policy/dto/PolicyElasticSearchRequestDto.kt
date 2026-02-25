@@ -1,22 +1,18 @@
-package com.back.domain.welfare.policy.dto;
+package com.back.domain.welfare.policy.dto
 
-import java.util.List;
+import com.querydsl.core.annotations.QueryProjection
 
-import com.querydsl.core.annotations.QueryProjection;
 
-public record PolicyElasticSearchRequestDto(
-        String zipCd,
-        String schoolCode,
-        String jobCode,
-        String keyword,
-        Integer age,
-        Integer earn,
-        String regionCode,
-        String marriageStatus,
-        List<String> keywords,
-        int from,
-        int size) {
-    @QueryProjection
-    public PolicyElasticSearchRequestDto {}
-    ;
-}
+class PolicyElasticSearchRequestDto @QueryProjection constructor(
+    val zipCd: String?,
+    @JvmField val schoolCode: String?,
+    @JvmField val jobCode: String?,
+    @JvmField val keyword: String?,
+    @JvmField val age: Int?,
+    @JvmField val earn: Int?,
+    @JvmField val regionCode: String?,
+    @JvmField val marriageStatus: String?,
+    @JvmField val keywords: MutableList<String?>?,
+    @JvmField val from: Int,
+    @JvmField val size: Int
+)

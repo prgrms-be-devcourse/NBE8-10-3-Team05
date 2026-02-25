@@ -1,117 +1,104 @@
-package com.back.domain.welfare.policy.service;
+package com.back.domain.welfare.policy.service
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.back.domain.welfare.policy.dto.PolicyFetchRequestDto
+import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.PolicyItem
+import com.back.domain.welfare.policy.entity.Policy
+import com.back.domain.welfare.policy.repository.PolicyRepository
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.io.IOException
+import kotlin.math.ceil
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.back.domain.welfare.policy.dto.PolicyFetchRequestDto;
-import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto;
-import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.PolicyItem;
-import com.back.domain.welfare.policy.entity.Policy;
-import com.back.domain.welfare.policy.repository.PolicyRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Service
-@RequiredArgsConstructor
-public class PolicyFetchService {
-
-    private final PolicyRepository policyRepository;
-    private final PolicyApiClient policyApiClient;
-    private final ObjectMapper objectMapper;
-    private final PolicyElasticSearchService policyElasticSearchService;
+class PolicyFetchService(                                      // ✅ 생성자 주입
+    private val policyRepository: PolicyRepository,
+    private val policyApiClient: PolicyApiClient,
+    private val objectMapper: ObjectMapper,
+    private val policyElasticSearchService: PolicyElasticSearchService
+) {
+    companion object {
+        private val log = LoggerFactory.getLogger(PolicyFetchService::class.java) // ✅ @Slf4j 대체
+    }
 
     @Transactional
-    @Deprecated
-    public void fetchAndSavePolicies(PolicyFetchRequestDto requestDto) throws IOException {
+    @Deprecated("")
+    @Throws(IOException::class)
+    fun fetchAndSavePolicies(requestDto: PolicyFetchRequestDto?) {
+        val pageSize = 100
+        var pageNum = 1
 
-        int pageSize = 100;
-        int pageNum = 1;
+        val fetchResponse = policyApiClient.fetchPolicyPage(requestDto, pageNum, pageSize)
+        val totalCnt = fetchResponse.result.pagging.totCount
+        val totalPages = ceil(totalCnt.toDouble() / pageSize).toInt()
 
-        // 1페이지 호출
-        PolicyFetchResponseDto fetchResponse = policyApiClient.fetchPolicyPage(requestDto, pageNum, pageSize);
+        savePolicies(fetchResponse.result.youthPolicyList)
 
-        int totalCnt = fetchResponse.result().pagging().totCount();
-        int totalPages = (int) Math.ceil((double) totalCnt / pageSize);
-
-        // 1페이지 저장
-        savePolicies(fetchResponse.result().youthPolicyList());
-
-        // 2페이지 이상 반복
-        for (pageNum = 2; pageNum <= totalPages; pageNum++) {
+        pageNum = 2
+        while (pageNum <= totalPages) {
             try {
-                Thread.sleep(500); // API 과부하 방지
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                Thread.sleep(500)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
             }
-
-            PolicyFetchResponseDto nextFetchResponse = policyApiClient.fetchPolicyPage(requestDto, pageNum, pageSize);
-            savePolicies(nextFetchResponse.result().youthPolicyList());
+            val nextFetchResponse = policyApiClient.fetchPolicyPage(requestDto, pageNum, pageSize)
+            savePolicies(nextFetchResponse.result.youthPolicyList)
+            pageNum++
         }
 
-        policyElasticSearchService.reindexAllFromDb();
+        policyElasticSearchService.reindexAllFromDb()
     }
 
-    private void savePolicies(List<PolicyFetchResponseDto.PolicyItem> items) {
-        // 1. 페이지 내 plcyNo 수집
-        Set<String> pagePlcyNos = items.stream().map(PolicyItem::plcyNo).collect(Collectors.toSet());
+    private fun savePolicies(items: MutableList<PolicyItem?>) {
+        val pagePlcyNos = items.mapNotNull { it?.plcyNo }.toSet()
+        val existingPlcyNos = policyRepository.findExistingPlcyNos(pagePlcyNos)
 
-        // 2. DB에 이미 존재하는 plcyNo 조회
-        Set<String> existingPlcyNos = policyRepository.findExistingPlcyNos(pagePlcyNos);
-
-        // 3. 페이지 내 중복 + DB 중복 제거
-        List<Policy> policies = items.stream()
-                .filter(item -> !existingPlcyNos.contains(item.plcyNo()))
-                .map(this::toEntity)
-                .toList();
+        val policies = items
+            .filterNotNull()
+            .filter { item -> !existingPlcyNos.contains(item.plcyNo) }
+            .map { item -> toEntity(item) }
 
         if (policies.isEmpty()) {
-            log.info("저장할 신규 정책 없음 (페이지 스킵)");
-            return;
+            log.info("저장할 신규 정책 없음 (페이지 스킵)")
+            return
         }
 
-        policyRepository.saveAll(policies);
+        policyRepository.saveAll(policies)
     }
 
-    private Policy toEntity(PolicyFetchResponseDto.PolicyItem item) {
-        try {
-            return Policy.builder()
-                    .plcyNo(item.plcyNo())
-                    .plcyNm(item.plcyNm())
-                    .plcyKywdNm(item.plcyKywdNm())
-                    .plcyExplnCn(item.plcyExplnCn())
-                    .plcySprtCn(item.plcySprtCn())
-                    .sprvsnInstCdNm(item.sprvsnInstCdNm())
-                    .operInstCdNm(item.operInstCdNm())
-                    .aplyPrdSeCd(item.aplyPrdSeCd())
-                    .bizPrdBgngYmd(item.bizPrdBgngYmd())
-                    .bizPrdEndYmd(item.bizPrdEndYmd())
-                    .plcyAplyMthdCn(item.plcyAplyMthdCn())
-                    .aplyUrlAddr(item.aplyUrlAddr())
-                    .sbmsnDcmntCn(item.sbmsnDcmntCn())
-                    .sprtTrgtMinAge(item.sprtTrgtMinAge())
-                    .sprtTrgtMaxAge(item.sprtTrgtMaxAge())
-                    .sprtTrgtAgeLmtYn(item.sprtTrgtAgeLmtYn())
-                    .mrgSttsCd(item.mrgSttsCd())
-                    .earnCndSeCd(item.earnCndSeCd())
-                    .earnMinAmt(item.earnMinAmt())
-                    .earnMaxAmt(item.earnMaxAmt())
-                    .zipCd(item.zipCd())
-                    .jobCd(item.jobCd())
-                    .schoolCd(item.schoolCd())
-                    .aplyYmd(item.aplyYmd())
-                    .sBizCd(item.sbizCd())
-                    .rawJson(objectMapper.writeValueAsString(item))
-                    .build();
-        } catch (Exception e) {
-            throw new RuntimeException("Entity 변환 실패", e);
+    private fun toEntity(item: PolicyItem): Policy {
+        return try {
+            Policy(
+                plcyNo = item.plcyNo,
+                plcyNm = item.plcyNm,
+                plcyKywdNm = item.plcyKywdNm,
+                plcyExplnCn = item.plcyExplnCn,
+                plcySprtCn = item.plcySprtCn,
+                sprvsnInstCdNm = item.sprvsnInstCdNm,
+                operInstCdNm = item.operInstCdNm,
+                aplyPrdSeCd = item.aplyPrdSeCd,
+                bizPrdBgngYmd = item.bizPrdBgngYmd,
+                bizPrdEndYmd = item.bizPrdEndYmd,
+                plcyAplyMthdCn = item.plcyAplyMthdCn,
+                aplyUrlAddr = item.aplyUrlAddr,
+                sbmsnDcmntCn = item.sbmsnDcmntCn,
+                sprtTrgtMinAge = item.sprtTrgtMinAge,
+                sprtTrgtMaxAge = item.sprtTrgtMaxAge,
+                sprtTrgtAgeLmtYn = item.sprtTrgtAgeLmtYn,
+                mrgSttsCd = item.mrgSttsCd,
+                earnCndSeCd = item.earnCndSeCd,
+                earnMinAmt = item.earnMinAmt,
+                earnMaxAmt = item.earnMaxAmt,
+                zipCd = item.zipCd,
+                jobCd = item.jobCd,
+                schoolCd = item.schoolCd,
+                aplyYmd = item.aplyYmd,
+                sBizCd = item.sbizCd,
+                rawJson = objectMapper.writeValueAsString(item)
+            )
+        } catch (e: Exception) {
+            throw RuntimeException("Entity 변환 실패", e)
         }
     }
 }

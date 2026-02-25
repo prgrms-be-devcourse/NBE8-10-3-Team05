@@ -1,81 +1,66 @@
-package com.back.domain.welfare.policy.mapper;
+package com.back.domain.welfare.policy.mapper
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import com.back.domain.welfare.policy.document.PolicyDocument
+import com.back.domain.welfare.policy.entity.Policy
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Component
 
-import org.springframework.stereotype.Component;
-
-import com.back.domain.welfare.policy.document.PolicyDocument;
-import com.back.domain.welfare.policy.entity.Policy;
-
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Component
-public class PolicyDocumentMapper {
+class PolicyDocumentMapper {
 
-    public PolicyDocument toDocument(Policy policy) {
+    companion object {
+        private val log = LoggerFactory.getLogger(PolicyDocumentMapper::class.java)
+    }
+
+    fun toDocument(policy: Policy): PolicyDocument? {
         return PolicyDocument.builder()
-                .policyId(policy.getId())
-                .plcyNo(policy.getPlcyNo())
-                .plcyNm(policy.getPlcyNm())
+            .policyId(policy.id)                          // ✅ getId() → .id
+            .plcyNo(policy.plcyNo)                        // ✅ getPlcyNo() → .plcyNo
+            .plcyNm(policy.plcyNm)
 
-                // 나이
-                .minAge(parseInteger(policy.getSprtTrgtMinAge()))
-                .maxAge(parseInteger(policy.getSprtTrgtMaxAge()))
-                .ageLimited(parseBoolean(policy.getSprtTrgtAgeLmtYn()))
+            .minAge(parseInteger(policy.sprtTrgtMinAge))
+            .maxAge(parseInteger(policy.sprtTrgtMaxAge))
+            .ageLimited(parseBoolean(policy.sprtTrgtAgeLmtYn))
 
-                // 소득
-                .earnCondition(policy.getEarnCndSeCd())
-                .earnMin(parseInteger(policy.getEarnMinAmt()))
-                .earnMax(parseInteger(policy.getEarnMaxAmt()))
+            .earnCondition(policy.earnCndSeCd)
+            .earnMin(parseInteger(policy.earnMinAmt))
+            .earnMax(parseInteger(policy.earnMaxAmt))
 
-                // 대상 조건
-                .regionCode(policy.getZipCd())
-                .jobCode(policy.getJobCd())
-                .schoolCode(policy.getSchoolCd())
-                .marriageStatus(policy.getMrgSttsCd())
+            .regionCode(policy.zipCd)
+            .jobCode(policy.jobCd)
+            .schoolCode(policy.schoolCd)
+            .marriageStatus(policy.mrgSttsCd)
 
-                // 태그 / 분류
-                .keywords(parseKeywords(policy.getPlcyKywdNm()))
-                .specialBizCode(policy.getSBizCd())
+            .keywords(parseKeywords(policy.plcyKywdNm))
+            .specialBizCode(policy.sBizCd)
 
-                // 검색용 텍스트
-                .description(buildDescription(policy.getPlcyExplnCn(), policy.getPlcySprtCn()))
-                .build();
+            .description(buildDescription(policy.plcyExplnCn, policy.plcySprtCn))
+            .build()
     }
 
-    /* ===== 유틸 메서드 ===== */
-
-    private Integer parseInteger(String value) {
-        try {
-            return (value == null || value.isBlank()) ? null : Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return null;
+    private fun parseInteger(value: String?): Int? {
+        return try {
+            if (value.isNullOrBlank()) null else value.toInt()
+        } catch (e: NumberFormatException) {
+            null
         }
     }
 
-    private Boolean parseBoolean(String value) {
-        if (value == null) return null;
-        return "Y".equalsIgnoreCase(value);
+    private fun parseBoolean(value: String?): Boolean? {
+        return value?.equals("Y", ignoreCase = true)
     }
 
-    private List<String> parseKeywords(String keywords) {
-        if (keywords == null || keywords.isBlank()) {
-            return Collections.emptyList();
-        }
-        // 예: "청년,주거,취업"
-        return Arrays.stream(keywords.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+    private fun parseKeywords(keywords: String?): MutableList<String?> {
+        if (keywords.isNullOrBlank()) return mutableListOf()
+        return keywords.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toMutableList()
     }
 
-    private String buildDescription(String... texts) {
-        return Arrays.stream(texts)
-                .filter(t -> t != null && !t.isBlank())
-                .reduce((a, b) -> a + " " + b)
-                .orElse(null);
+    private fun buildDescription(vararg texts: String?): String? {
+        return texts.filterNotNull()
+            .filter { it.isNotBlank() }
+            .reduceOrNull { a, b -> "$a $b" }
     }
 }
