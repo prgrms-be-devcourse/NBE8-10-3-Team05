@@ -46,13 +46,22 @@ public class EstateApiItemReader extends AbstractPagingItemReader<EstateDto> {
             try {
                 // 현재 선택된 키로 API 호출 (페이지 번호 전달)
 
-                EstateFetchRequestDto requestDto = EstateFetchRequestDto.builder()
-                        .pageNo(getPage() + 1)
-                        .numOfRows(getPageSize())
-                        .build();
+                EstateFetchRequestDto requestDto = new EstateFetchRequestDto(
+                    null,               // serviceKey
+                    null,               // brtcCode
+                    null,               // signguCode
+                    getPageSize(),      // numOfRows
+                    getPage() + 1,      // pageNo
+                    null,               // suplyTy
+                    null,               // houseTy
+                    null,               // lfstsTyAt
+                    null,               // bassMtRntchrgSe
+                    null,               // yearMtBegin
+                    null                // yearMtEnd
+                );
                 EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);
 
-                List<EstateDto> data = responseDto.response().body().items();
+                List<EstateDto> data = responseDto.response.body.items;
                 results.addAll(data);
                 success = true;
 

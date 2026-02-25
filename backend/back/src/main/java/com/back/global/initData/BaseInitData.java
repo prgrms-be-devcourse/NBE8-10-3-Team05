@@ -132,7 +132,7 @@ public class BaseInitData {
             EstateFetchResponseDto response = objectMapper.readValue(is, EstateFetchResponseDto.class);
 
             List<Estate> estateList =
-                    response.response().body().items().stream().map(Estate::new).toList();
+                    response.response.body.items.stream().map(Estate::new).toList();
 
             estateRepository.saveAll(estateList);
 
