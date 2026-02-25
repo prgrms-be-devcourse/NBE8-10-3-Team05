@@ -1,51 +1,55 @@
-package com.back.global.globalExceptionHandler;
+package com.back.global.globalExceptionHandler
 
-import java.util.Map;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import com.back.global.exception.ServiceException;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.back.global.exception.ServiceException
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
-@RequiredArgsConstructor
-@Slf4j
-public class GlobalExceptionHandler {
-    @ExceptionHandler(ServiceException.class)
-    public ResponseEntity<Map<String, Object>> handle(ServiceException ex) {
-        log.debug("[{}] : {} , {}", ex.getLocation(), ex.getResultCode(), ex.getMsg(), ex);
+class GlobalExceptionHandler {
 
-        int httpStatus = 500;
-        String fullCode = ex.getResultCode();
+    @ExceptionHandler(ServiceException::class)
+    fun handle(ex: ServiceException): ResponseEntity<Map<String, Any?>> {
+        // 기존 로그 출력 로직 그대로 유지
+        log.debug("[{}] : {} , {}", ex.location, ex.resultCode, ex.msg, ex)
+
+        var httpStatus = 500
+        val fullCode = ex.resultCode
 
         try {
-            int parsedCode = Integer.parseInt(fullCode.substring(0, 3));
+            // resultCode의 앞 3자리를 파싱하여 HTTP 상태 코드 결정
+            val parsedCode = fullCode.substring(0, 3).toInt()
             if (HttpStatus.resolve(parsedCode) != null) {
-                httpStatus = parsedCode;
+                httpStatus = parsedCode
             } else {
-                log.warn("정의되지 않은 HTTP 상태 코드: {} (기본값 500 사용하여 에러 나지 않음)", parsedCode);
+                log.warn("정의되지 않은 HTTP 상태 코드: {} (기본값 500 사용하여 에러 나지 않음)", parsedCode)
             }
-        } catch (NumberFormatException exception) {
-            log.error("유효하지 않은 에러 코드 형식: {}", fullCode);
+        } catch (exception: NumberFormatException) {
+            log.error("유효하지 않은 에러 코드 형식: {}", fullCode)
         }
 
+        // 특정 키워드 포함 시 상태 코드 보정 로직 유지
         if (httpStatus == 500) {
             if (fullCode.contains("401")) {
-                httpStatus = 401;
+                httpStatus = 401
             } else if (fullCode.contains("404")) {
-                httpStatus = 404;
+                httpStatus = 404
             } else if (fullCode.contains("409")) {
-                httpStatus = 409;
+                httpStatus = 409
             } else if (fullCode.contains("400")) {
-                httpStatus = 400;
+                httpStatus = 400
             }
         }
 
-        return ResponseEntity.status(httpStatus).body(Map.of("resultCode", fullCode, "msg", ex.getMsg()));
+        // 응답 바디 생성 및 반환
+        return ResponseEntity.status(httpStatus)
+            .body(mapOf("resultCode" to fullCode, "msg" to ex.msg))
+    }
+
+    companion object {
+        private val log: Logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
     }
 }
