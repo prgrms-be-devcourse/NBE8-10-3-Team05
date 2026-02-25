@@ -17,6 +17,7 @@ class LawyerService(private val lawyerRepository: LawyerRepository) {
     fun searchByDistrict(lawyerReq: LawyerReq, pageable: Pageable): Page<LawyerRes> {
         val area1 = normalizeArea1(lawyerReq.area1)
         // 서울특별시 -> 서울, 전라북도 -> 전북 으로 정규화 위함
+        // SidoNormalizer는 서울 -> 서울특별시 로 반환하는 반대 기능이므로 사용하지 않음
 
         val area2 = lawyerReq.area2 ?: ""
         // 군/구 정보가 null이면 ""을 사용하도록..

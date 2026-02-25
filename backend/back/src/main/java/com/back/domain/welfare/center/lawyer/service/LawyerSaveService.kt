@@ -12,18 +12,22 @@ class LawyerSaveService(private val lawyerRepository: LawyerRepository) {
 
     @Transactional
     fun saveList(lawyerList: List<Lawyer>) {
-        try {
-            // 기존 DB에 없는 데이터만 골라서 한번에 저장
-            val newLawyers = lawyerList.filter { lawyer ->
-                !lawyerRepository.existsByNameAndCorporation(lawyer.name, lawyer.corporation)
-            }
 
-            if (newLawyers.isNotEmpty()) {
-                lawyerRepository.saveAll(newLawyers)
-            }
+        val names = lawyerList.map { it.name }.distinct()
+        val existingLawyers = lawyerRepository.findByNameIn(names)
+        val existingLawyerSet = existingLawyers.map { "${it.name}&${it.corporation}" }.toSet()
+        // lawyerList에서 lawyer 이름만 뽑아와서 "이름&법인" 형태로 set에 저장"
 
-        } catch (e: Exception) {
-            log.error("노무사 정보 저장 에러", e)
+        val lawyersToSave = lawyerList.filter { lawyer ->
+            val key = "${lawyer.name}&${lawyer.corporation}"
+            key !in existingLawyerSet
+        }
+        // lawyerSet에 속하지 않은 lawyerList 요소만 필터링해 저장
+        // -> 루프 돌면서 매번 쿼리를 날려 확인할 필요없이, 최소한의 쿼리로조회로 DB에 없는 노무사 데이터만 저장 가능
+
+        if (lawyersToSave.isNotEmpty()) {
+            lawyerRepository.saveAll(lawyersToSave)
+            log.info("노무사 데이터 {}건 저장", lawyersToSave.size)
         }
     }
 }

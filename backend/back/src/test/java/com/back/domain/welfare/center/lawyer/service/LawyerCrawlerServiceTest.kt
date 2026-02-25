@@ -1,20 +1,26 @@
 package com.back.domain.welfare.center.lawyer.service
 
 import com.back.domain.welfare.center.lawyer.repository.LawyerRepository
-import com.back.domain.welfare.center.lawyer.service.LawyerCrawlerService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
+import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.mockito.ArgumentMatchers.anyString
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+import org.springframework.web.client.ResourceAccessException
 
 @ActiveProfiles("test")
 @SpringBootTest
 @Transactional
 class LawyerCrawlerServiceTest {
-    @Autowired
+    @MockitoSpyBean
     private lateinit var lawyerCrawlerService: LawyerCrawlerService
 
     @Autowired
@@ -57,5 +63,18 @@ class LawyerCrawlerServiceTest {
         assertThat(lastPage).isGreaterThan(0)
         assertThat(lastPage).isGreaterThanOrEqualTo(311)
         println("서울 마지막 페이지: $lastPage")
+    }
+
+    @Test
+    @DisplayName("@Retryable검증-타임아웃 5번 발생 시 최종적으로 예외 터져야 함")
+    fun t4() {
+        doThrow(ResourceAccessException("강제 타임아웃 에러"))
+            .`when`(lawyerCrawlerService).crawlAndSelectRows(anyString())
+
+        assertThrows<ResourceAccessException> {
+            lawyerCrawlerService.crawlEachPage("서울", 1)
+        }
+
+        verify(lawyerCrawlerService, times(5)).crawlAndSelectRows(anyString())
     }
 }

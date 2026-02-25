@@ -14,11 +14,20 @@ import org.springframework.web.client.ResourceAccessException
 import java.io.IOException
 import java.net.SocketTimeoutException
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Lazy
 
 @Service
 class LawyerCrawlerService(
     private val lawyerSaveService: LawyerSaveService
 ) {
+    @Autowired
+    @Lazy
+    private lateinit var self: LawyerCrawlerService
+    // crawlMultiPages 가 crawlEachPage를 호출할 때 crawlEachPage의 @Retryable이 작동하도록 하기 위함
+    // this.crawlEachPage() 쓰면 내부 호출이라 프록시 X -> @Retryable 작동 X
+    // self.crawlEachPage() 써서 프록시 객체를 다시 주입받아서 호출 ->  에러 났을 때 @Retryable 작동 O
+
     private val log = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -42,12 +51,7 @@ class LawyerCrawlerService(
         val lawyerList = mutableListOf<Lawyer>()
 
         (startPage..endPage).forEach { page ->
-            val url = SEARCH_URL.format(area1, page)
-            val rows = crawlAndSelectRows(url)
-            // 페이지를 순회하며 테이블 내부 각각 행의 정보을 받아옴
-
-            // 열 별로 순회하면서 파싱 & mapNotNull을 사용하여 유효한 데이터만 리스트에 추가할 수 있도록
-            val pageLawyers = rows.mapNotNull { parseRowToLawyer(it, area1) }
+            val pageLawyers = self.crawlEachPage(area1, page)
             lawyerList.addAll(pageLawyers)
 
             // 설정한 배치 사이즈 기준마다 저장
@@ -80,7 +84,6 @@ class LawyerCrawlerService(
     fun crawlEachPage(area1: String, startPage: Int): List<Lawyer> {
         val url = SEARCH_URL.format(area1, startPage)
         val rows = crawlAndSelectRows(url)
-
 
         return rows.mapNotNull { row ->
             val lawyer = parseRowToLawyer(row, area1)
@@ -119,16 +122,10 @@ class LawyerCrawlerService(
     }
 
     fun crawlAndSelectRows(url: String): Elements {
-        return  try {
-            val doc =
-                Jsoup.connect(url).userAgent("Mozilla/5.0").timeout(10000).get()
-            doc.select("table tbody tr")
-            // table의 -> tbody -> tr 조회
-        } catch (e: IOException) {
-            log.error("크롤링 에러 발생", e)
-            // 에러 발생 시 프로그램이 멈추지 않도록, 빈 Elements 반환
-            Elements()
-        }
+        val doc =
+            Jsoup.connect(url).userAgent("Mozilla/5.0").timeout(10000).get()
+        return doc.select("table tbody tr")
+    // table의 -> tbody -> tr 조회
     }
 
     // 특정 지역의 마지막 페이지 숫자 받아오기
