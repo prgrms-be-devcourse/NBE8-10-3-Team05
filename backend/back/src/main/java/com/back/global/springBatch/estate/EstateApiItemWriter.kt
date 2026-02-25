@@ -1,24 +1,21 @@
-package com.back.global.springBatch.estate;
+package com.back.global.springBatch.estate
 
-import org.springframework.batch.infrastructure.item.database.JpaItemWriter;
-import org.springframework.batch.infrastructure.item.database.builder.JpaItemWriterBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import com.back.domain.welfare.estate.entity.Estate;
-
-import jakarta.persistence.EntityManagerFactory;
-import lombok.RequiredArgsConstructor;
+import com.back.domain.welfare.estate.entity.Estate
+import jakarta.persistence.EntityManagerFactory
+import org.springframework.batch.infrastructure.item.database.JpaItemWriter
+import org.springframework.batch.infrastructure.item.database.builder.JpaItemWriterBuilder
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 
 @Configuration
-@RequiredArgsConstructor
-public class EstateApiItemWriter {
-    private final EntityManagerFactory entityManagerFactory;
+class EstateApiItemWriter(
+    private val entityManagerFactory: EntityManagerFactory
+) {
 
     @Bean
-    public JpaItemWriter<Estate> estateJpaItemWriter() {
-        return new JpaItemWriterBuilder<Estate>()
-                .entityManagerFactory(entityManagerFactory)
-                .build();
+    fun estateJpaItemWriter(): JpaItemWriter<Estate> {
+        return JpaItemWriterBuilder<Estate>()
+            .entityManagerFactory(entityManagerFactory)
+            .build()
     }
 }

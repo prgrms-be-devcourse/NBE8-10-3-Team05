@@ -1,15 +1,13 @@
-package com.back.global.springBatch.estate;
+package com.back.global.springBatch.estate
 
-import org.springframework.batch.infrastructure.item.ItemProcessor;
-import org.springframework.stereotype.Component;
-
-import com.back.domain.welfare.estate.dto.EstateDto;
-import com.back.domain.welfare.estate.entity.Estate;
+import com.back.domain.welfare.estate.dto.EstateDto
+import com.back.domain.welfare.estate.entity.Estate
+import org.springframework.batch.infrastructure.item.ItemProcessor
+import org.springframework.stereotype.Component
 
 @Component
-public class EstateApiItemProcessor implements ItemProcessor<EstateDto, Estate> {
-    @Override
-    public Estate process(EstateDto estateDto) throws Exception {
-        return new Estate(estateDto);
+class EstateApiItemProcessor : ItemProcessor<EstateDto, Estate> {
+    override fun process(item: EstateDto): Estate? {
+        return Estate(item)
     }
 }
