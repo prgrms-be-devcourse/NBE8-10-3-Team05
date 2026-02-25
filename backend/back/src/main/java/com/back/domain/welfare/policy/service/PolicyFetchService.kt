@@ -61,7 +61,7 @@ class PolicyFetchService(
         val policies = items
             .filterNotNull()
             .filter { item -> !existingPlcyNos.contains(item.plcyNo) }
-            .map { item -> toEntity(item) }
+            .map { item -> Policy.from(item, objectMapper.writeValueAsString(item)) }
 
         if (policies.isEmpty()) {
             log.info("저장할 신규 정책 없음 (페이지 스킵)")
@@ -71,38 +71,4 @@ class PolicyFetchService(
         policyRepository.saveAll(policies)
     }
 
-    private fun toEntity(item: PolicyItem): Policy {
-        return try {
-            Policy(
-                plcyNo = item.plcyNo,
-                plcyNm = item.plcyNm,
-                plcyKywdNm = item.plcyKywdNm,
-                plcyExplnCn = item.plcyExplnCn,
-                plcySprtCn = item.plcySprtCn,
-                sprvsnInstCdNm = item.sprvsnInstCdNm,
-                operInstCdNm = item.operInstCdNm,
-                aplyPrdSeCd = item.aplyPrdSeCd,
-                bizPrdBgngYmd = item.bizPrdBgngYmd,
-                bizPrdEndYmd = item.bizPrdEndYmd,
-                plcyAplyMthdCn = item.plcyAplyMthdCn,
-                aplyUrlAddr = item.aplyUrlAddr,
-                sbmsnDcmntCn = item.sbmsnDcmntCn,
-                sprtTrgtMinAge = item.sprtTrgtMinAge,
-                sprtTrgtMaxAge = item.sprtTrgtMaxAge,
-                sprtTrgtAgeLmtYn = item.sprtTrgtAgeLmtYn,
-                mrgSttsCd = item.mrgSttsCd,
-                earnCndSeCd = item.earnCndSeCd,
-                earnMinAmt = item.earnMinAmt,
-                earnMaxAmt = item.earnMaxAmt,
-                zipCd = item.zipCd,
-                jobCd = item.jobCd,
-                schoolCd = item.schoolCd,
-                aplyYmd = item.aplyYmd,
-                sBizCd = item.sbizCd,
-                rawJson = objectMapper.writeValueAsString(item)
-            )
-        } catch (e: Exception) {
-            throw RuntimeException("Entity 변환 실패", e)
-        }
-    }
 }
