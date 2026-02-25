@@ -24,25 +24,6 @@ class JwtProvider(
 
     fun issueAccessToken(
         memberId: Long,
-        email: String,
-        role: String
-    ): String {
-
-        val now = Instant.now()
-        val exp = now.plusSeconds(accessTokenExpSeconds)
-
-        return Jwts.builder()
-            .subject(memberId.toString())
-            .issuedAt(Date.from(now))
-            .expiration(Date.from(exp))
-            .claim("email", email)
-            .claim("role", role)
-            .signWith(key)
-            .compact()
-    }
-
-    fun issueAccessTokenWithoutEmail(
-        memberId: Long,
         role: String
     ): String {
 

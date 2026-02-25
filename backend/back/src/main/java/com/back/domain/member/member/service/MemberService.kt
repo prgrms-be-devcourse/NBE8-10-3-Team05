@@ -199,10 +199,10 @@ class MemberService(
     }
 
     // TODO: 이걸 쓰는 곳이 한곳인듯 한데 거기서 memberRepository 부르고 여기는 삭제하는게 더 좋지 않을까요
-    @Transactional(readOnly = true)
-    fun findById(id: Long): Optional<Member> {
-        return memberRepository.findById(id)
-    }
+//    @Transactional(readOnly = true)
+//    fun findById(id: Long): Optional<Member> {
+//        return memberRepository.findById(id)
+//    }
 
     //    @Transactional
     //    public String issueLoginCookies(Member member, HttpServletResponse response) {
@@ -251,10 +251,8 @@ class MemberService(
         // =========================
         // 1) AccessToken 발급
         // =========================
-        // TODO: 안쓰는 email은 지우는게 좋을 것 같습니다.
         val accessToken = jwtProvider.issueAccessToken(
             requireNotNull(member.id),
-            member.email ?: "",
             member.role.toString()
         )
 
@@ -306,7 +304,7 @@ class MemberService(
         response: HttpServletResponse
     ) {
 
-        val accessToken = jwtProvider.issueAccessTokenWithoutEmail(memberId, memberRole.toString())
+        val accessToken = jwtProvider.issueAccessToken(memberId, memberRole.toString())
 
         val rawRefreshToken = RefreshTokenGenerator.generate()
 
