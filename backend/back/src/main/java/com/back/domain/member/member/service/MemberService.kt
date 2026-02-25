@@ -67,8 +67,8 @@ class MemberService(
             req.name,
             req.email,
             encodedPassword,
-            req.rrnFront ?: "",
-            req.rrnBackFirst ?: ""
+            req.rrnFront,
+            req.rrnBackFirst
         )
 
         val savedMember = memberRepository.save(member)
