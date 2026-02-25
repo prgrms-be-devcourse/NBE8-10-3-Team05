@@ -1,69 +1,67 @@
-package com.back.domain.welfare.estate.service;
+package com.back.domain.welfare.estate.service
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.back.domain.welfare.estate.dto.EstateFetchRequestDto;
-import com.back.domain.welfare.estate.dto.EstateFetchResponseDto;
-import com.back.domain.welfare.estate.entity.Estate;
-import com.back.domain.welfare.estate.repository.EstateRepository;
-
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import com.back.domain.welfare.estate.dto.EstateFetchRequestDto
+import com.back.domain.welfare.estate.dto.EstateFetchResponseDto
+import com.back.domain.welfare.estate.entity.Estate
+import com.back.domain.welfare.estate.repository.EstateRepository
+import org.slf4j.LoggerFactory
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import kotlin.math.ceil
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
-public class EstateService {
-    private final EstateRepository estateRepository;
-    private final EstateApiClient estateApiClient;
+class EstateService(
+    private val estateRepository: EstateRepository,
+    private val estateApiClient: EstateApiClient
+) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
-    @SneakyThrows
-    public List<Estate> fetchEstateList() {
-        // api가 한번에 모든 정보를 갖고오도록
-        int pageSize = 100;
-        EstateFetchRequestDto requestDto =
-                EstateFetchRequestDto.builder().numOfRows(pageSize).pageNo(1).build();
-        EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);
-        int totalCnt = Integer.parseInt(responseDto.response.body.totalCount);
-        int totalPages = (int) Math.ceil((double) totalCnt / requestDto.numOfRows);
+    @Transactional
+    fun fetchAndSaveAllEstates(): List<Estate> {
+        val pageSize = 100
+        val firstRequest = EstateFetchRequestDto(numOfRows = pageSize, pageNo = 1)
 
-        // 대부분 100개 안에서 해결될 것이라 가정
-        List<Estate> estateList = new ArrayList<>(estateListFromResponse(responseDto));
+        // 첫 페이지 호출 및 전체 페이지 수 계산
+        val firstResponse = estateApiClient.fetchEstatePage(firstRequest)
+        val body = firstResponse.response?.body ?: return emptyList()
 
-        for (int pageNo = 2; pageNo <= totalPages; pageNo++) {
-            EstateFetchRequestDto nextRequestDto = EstateFetchRequestDto.builder()
-                    .numOfRows(pageSize)
-                    .pageNo(pageNo)
-                    .build();
-            EstateFetchResponseDto nextResponseDto = estateApiClient.fetchEstatePage(nextRequestDto);
-            estateList.addAll(estateListFromResponse(nextResponseDto));
-            Thread.sleep(500);
+        val totalCnt = body.totalCount?.toInt() ?: 0
+        val totalPages = ceil(totalCnt.toDouble() / pageSize).toInt()
+
+        val allEstates = mutableListOf<Estate>()
+        allEstates.addAll(estateListFromResponse(firstResponse))
+
+        // 2페이지부터 순회
+        for (pageNo in 2..totalPages) {
+            val nextRequest = EstateFetchRequestDto(numOfRows = pageSize, pageNo = pageNo)
+            val nextResponse = estateApiClient.fetchEstatePage(nextRequest)
+            allEstates.addAll(estateListFromResponse(nextResponse))
+
+            // API 서버 부하 방지
+            Thread.sleep(500)
         }
 
-        return estateRepository.saveAll(estateList);
+        log.info("총 ${allEstates.size}건의 데이터를 저장합니다.")
+        return estateRepository.saveAll(allEstates)
     }
 
     @Transactional
-    public List<Estate> saveEstateList(EstateFetchResponseDto responseDto) {
-        return estateRepository.saveAll(estateListFromResponse(responseDto));
+    fun saveEstateList(responseDto: EstateFetchResponseDto): List<Estate> {
+        return estateRepository.saveAll(estateListFromResponse(responseDto))
     }
 
-    private List<Estate> estateListFromResponse(EstateFetchResponseDto responseDto) {
-        EstateFetchResponseDto.Response.BodyDto body = responseDto.response.body;
-        if (body.items == null || body.items.isEmpty()) {
-            return List.of();
+    private fun estateListFromResponse(responseDto: EstateFetchResponseDto): List<Estate> {
+        val items = responseDto.response?.body?.items ?: return emptyList()
+
+        // Java Stream 대신 Kotlin의 mapNotNull 활용
+        return items.mapNotNull { dto ->
+            dto?.let { Estate(it) }
         }
-        return body.items.stream().map(Estate::new).toList();
     }
 
-    @Cacheable(value = "estate", key = "#sido + ':' + #signguNm")
-    public List<Estate> searchEstateLocation(String keyword1, String keyword2) {
-        return estateRepository.searchByKeywords(keyword1, keyword2);
+    @Cacheable(value = ["estate"], key = "#keyword1 + ':' + #keyword2")
+    fun searchEstateLocation(keyword1: String?, keyword2: String?): List<Estate> {
+        return estateRepository.searchByKeywords(keyword1, keyword2) ?: emptyList()
     }
 }
