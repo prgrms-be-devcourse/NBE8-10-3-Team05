@@ -5,12 +5,10 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.retry.RetryPolicy
 import org.springframework.core.task.AsyncTaskExecutor
-import org.springframework.retry.policy.SimpleRetryPolicy
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.web.client.ResourceAccessException
 import java.net.SocketTimeoutException
 import java.time.Duration
-import java.util.Set
 
 @Configuration
 class BatchSupportConfig {
@@ -19,7 +17,7 @@ class BatchSupportConfig {
         ThreadPoolTaskExecutor().apply {
             corePoolSize = 8
             maxPoolSize = 8
-            threadNamePrefix = "batch-thread-"
+            setThreadNamePrefix("batch-thread-")
             initialize()
         }
 
@@ -29,19 +27,20 @@ class BatchSupportConfig {
             corePoolSize = 4
             maxPoolSize = 4
             queueCapacity = 100
-            threadNamePrefix = "crawler-"
+            setThreadNamePrefix("crawler-")
             initialize()
         }
 
     @Bean
-    fun retryPolicy(): SimpleRetryPolicy =
-        SimpleRetryPolicy(
-            4,
-            mapOf(
-                SocketTimeoutException::class.java to true,
-                ResourceAccessException::class.java to true,
-                ConnectTimeoutException::class.java to true
-            ),
-            true
-        )
+    fun retryPolicy(): RetryPolicy{
+        return RetryPolicy.builder()
+            .maxRetries(3) // 총 4번 실행 (최초 1 + 재시도 3)
+            .delay(Duration.ofSeconds(2))
+            .includes(
+                SocketTimeoutException::class.java,
+                ResourceAccessException::class.java,
+                ConnectTimeoutException::class.java
+            )
+            .build()
+    }
 }
