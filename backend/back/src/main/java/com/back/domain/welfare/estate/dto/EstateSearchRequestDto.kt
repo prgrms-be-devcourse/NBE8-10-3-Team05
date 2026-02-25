@@ -1,3 +1,3 @@
-package com.back.domain.welfare.estate.dto;
+package com.back.domain.welfare.estate.dto
 
-public record EstateSearchRequestDto() {}
+class EstateSearchRequestDto 

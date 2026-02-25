@@ -30,8 +30,8 @@ public class EstateService {
         EstateFetchRequestDto requestDto =
                 EstateFetchRequestDto.builder().numOfRows(pageSize).pageNo(1).build();
         EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);
-        int totalCnt = Integer.parseInt(responseDto.response().body().totalCount());
-        int totalPages = (int) Math.ceil((double) totalCnt / requestDto.numOfRows());
+        int totalCnt = Integer.parseInt(responseDto.response.body.totalCount);
+        int totalPages = (int) Math.ceil((double) totalCnt / requestDto.numOfRows);
 
         // 대부분 100개 안에서 해결될 것이라 가정
         List<Estate> estateList = new ArrayList<>(estateListFromResponse(responseDto));
@@ -55,11 +55,11 @@ public class EstateService {
     }
 
     private List<Estate> estateListFromResponse(EstateFetchResponseDto responseDto) {
-        EstateFetchResponseDto.Response.BodyDto body = responseDto.response().body();
-        if (body.items() == null || body.items().isEmpty()) {
+        EstateFetchResponseDto.Response.BodyDto body = responseDto.response.body;
+        if (body.items == null || body.items.isEmpty()) {
             return List.of();
         }
-        return body.items().stream().map(Estate::new).toList();
+        return body.items.stream().map(Estate::new).toList();
     }
 
     @Cacheable(value = "estate", key = "#sido + ':' + #signguNm")

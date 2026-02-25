@@ -44,16 +44,16 @@ class EstateServiceTest {
         EstateFetchResponseDto responseDto = mockResponse(10, 9);
 
         assertNotNull(responseDto, "ResponseDto가 null입니다.");
-        assertNotNull(responseDto.response(), "ResponseDto.response가 null입니다.");
-        assertNotNull(responseDto.response().body(), "ResponseDto.response.body가 null입니다.");
+        assertNotNull(responseDto.response, "ResponseDto.response가 null입니다.");
+        assertNotNull(responseDto.response.body, "ResponseDto.response.body가 null입니다.");
 
-        EstateFetchResponseDto.Response.BodyDto body = responseDto.response().body();
+        EstateFetchResponseDto.Response.BodyDto body = responseDto.response.body;
 
-        assertFalse(body.numOfRows().isBlank(), "numOfRows가 비어있습니다.");
-        assertFalse(body.pageNo().isBlank(), "pageNo가 비어있습니다.");
-        assertFalse(body.totalCount().isBlank(), "totalCount가 비어있습니다.");
+        assertFalse(body.numOfRows.isBlank(), "numOfRows가 비어있습니다.");
+        assertFalse(body.pageNo.isBlank(), "pageNo가 비어있습니다.");
+        assertFalse(body.totalCount.isBlank(), "totalCount가 비어있습니다.");
 
-        assertEquals(9, body.items().size());
+        assertEquals(9, body.items.size());
     }
 
     @Test
@@ -67,15 +67,15 @@ class EstateServiceTest {
         EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);
 
         assertNotNull(responseDto, "ResponseDto가 null입니다.");
-        assertNotNull(responseDto.response(), "ResponseDto.response가 null입니다.");
-        assertNotNull(responseDto.response().body(), "ResponseDto.response.body가 null입니다.");
+        assertNotNull(responseDto.response, "ResponseDto.response가 null입니다.");
+        assertNotNull(responseDto.response.body, "ResponseDto.response.body가 null입니다.");
 
-        EstateFetchResponseDto.Response.BodyDto body = responseDto.response().body();
+        EstateFetchResponseDto.Response.BodyDto body = responseDto.response.body;
 
-        assertFalse(body.numOfRows().isBlank(), "numOfRows가 비어있습니다.");
-        assertFalse(body.pageNo().isBlank(), "pageNo가 비어있습니다.");
-        assertFalse(body.totalCount().isBlank(), "totalCount가 비어있습니다.");
-        assertNotNull(body.items(), "items 리스트 자체가 null입니다.");
+        assertFalse(body.numOfRows.isBlank(), "numOfRows가 비어있습니다.");
+        assertFalse(body.pageNo.isBlank(), "pageNo가 비어있습니다.");
+        assertFalse(body.totalCount.isBlank(), "totalCount가 비어있습니다.");
+        assertNotNull(body.items, "items 리스트 자체가 null입니다.");
     }
 
     @Test

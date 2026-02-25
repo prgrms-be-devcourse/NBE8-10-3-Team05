@@ -1,5 +1,3 @@
-package com.back.domain.welfare.estate.dto;
+package com.back.domain.welfare.estate.dto
 
-import java.util.List;
-
-public record EstateRegionResponseDto(List<EstateRegionDto> estateRegionList) {}
+data class EstateRegionResponseDto(val estateRegionList: MutableList<EstateRegionDto?>?)

@@ -52,7 +52,7 @@ public class EstateApiItemReader extends AbstractPagingItemReader<EstateDto> {
                         .build();
                 EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);
 
-                List<EstateDto> data = responseDto.response().body().items();
+                List<EstateDto> data = responseDto.response.body.items;
                 results.addAll(data);
                 success = true;
 

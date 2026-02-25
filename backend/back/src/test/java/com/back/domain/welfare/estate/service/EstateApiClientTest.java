@@ -31,13 +31,13 @@ class EstateApiClientTest {
         EstateFetchResponseDto responseDto = estateApiClient.fetchEstatePage(requestDto);
 
         assertNotNull(responseDto, "ResponseDto가 null입니다.");
-        assertNotNull(responseDto.response(), "ResponseDto.response가 null입니다.");
-        assertNotNull(responseDto.response().body(), "ResponseDto.response.body가 null입니다.");
+        assertNotNull(responseDto.response, "ResponseDto.response가 null입니다.");
+        assertNotNull(responseDto.response.body, "ResponseDto.response.body가 null입니다.");
 
-        EstateFetchResponseDto.Response.BodyDto body = responseDto.response().body();
+        EstateFetchResponseDto.Response.BodyDto body = responseDto.response.body;
 
-        assertFalse(body.numOfRows().isBlank(), "numOfRows가 비어있습니다.");
-        assertFalse(body.pageNo().isBlank(), "pageNo가 비어있습니다.");
-        assertFalse(body.totalCount().isBlank(), "totalCount가 비어있습니다.");
+        assertFalse(body.numOfRows.isBlank(), "numOfRows가 비어있습니다.");
+        assertFalse(body.pageNo.isBlank(), "pageNo가 비어있습니다.");
+        assertFalse(body.totalCount.isBlank(), "totalCount가 비어있습니다.");
     }
 }

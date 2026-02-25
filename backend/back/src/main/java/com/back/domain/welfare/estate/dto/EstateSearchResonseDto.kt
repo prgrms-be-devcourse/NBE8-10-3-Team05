@@ -1,7 +1,5 @@
-package com.back.domain.welfare.estate.dto;
+package com.back.domain.welfare.estate.dto
 
-import java.util.List;
+import com.back.domain.welfare.estate.entity.Estate
 
-import com.back.domain.welfare.estate.entity.Estate;
-
-public record EstateSearchResonseDto(List<Estate> estateList) {}
+data class EstateSearchResonseDto(val estateList: MutableList<Estate?>?)
