@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
@@ -31,6 +32,7 @@ import java.util.*
 import java.util.function.Function
 
 @ActiveProfiles("test")
+@TestPropertySource(properties = ["app.elasticsearch.policy-index=policy_controller"])
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -151,6 +153,6 @@ class PolicyControllerTest {
     }
 
     companion object {
-        private const val INDEX = "policy"
+        private const val INDEX = "policy_controller"
     }
 }

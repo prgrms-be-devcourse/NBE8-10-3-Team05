@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +36,10 @@ public class PolicyElasticSearchService {
     private final PolicyDocumentMapper policyDocumentMapper;
     private final PolicyQueryBuilder policyQueryBuilder;
 
-    private static final String INDEX = "policy";
+    private static final String DEFAULT_INDEX = "policy";
+
+    @Value("${app.elasticsearch.policy-index:" + DEFAULT_INDEX + "}")
+    private String indexName;
 
     /**
      * ES 인덱스가 없으면 생성합니다.
@@ -43,13 +47,13 @@ public class PolicyElasticSearchService {
      */
     public void ensureIndex() throws IOException {
         boolean exists =
-                esClient.indices().exists(ExistsRequest.of(r -> r.index(INDEX))).value();
+                esClient.indices().exists(ExistsRequest.of(r -> r.index(indexName))).value();
 
         if (exists) {
             return;
         }
 
-        esClient.indices().create(c -> c.index(INDEX).mappings(m -> m.properties("policyId", p -> p.integer(i -> i))
+        esClient.indices().create(c -> c.index(indexName).mappings(m -> m.properties("policyId", p -> p.integer(i -> i))
                 .properties("plcyNo", p -> p.keyword(k -> k))
                 .properties("plcyNm", p -> p.text(t -> t))
                 .properties("minAge", p -> p.integer(i -> i))
@@ -66,7 +70,7 @@ public class PolicyElasticSearchService {
                 .properties("specialBizCode", p -> p.keyword(k -> k))
                 .properties("description", p -> p.text(t -> t))));
 
-        log.info("Elasticsearch index created: {}", INDEX);
+        log.info("Elasticsearch index created: {}", indexName);
     }
 
     /**
@@ -90,7 +94,7 @@ public class PolicyElasticSearchService {
             }
 
             ops.add(BulkOperation.of(b -> b.index(
-                    i -> i.index(INDEX).id(String.valueOf(doc.getPolicyId())).document(doc))));
+                    i -> i.index(indexName).id(String.valueOf(doc.getPolicyId())).document(doc))));
         }
 
         var resp = esClient.bulk(b -> b.operations(ops).refresh(Refresh.True));
@@ -118,7 +122,7 @@ public class PolicyElasticSearchService {
         String q = (keyword == null) ? "" : keyword.trim();
 
         SearchResponse<PolicyDocument> response = esClient.search(
-                s -> s.index(INDEX)
+                s -> s.index(indexName)
                         .from(Math.max(from, 0))
                         .size(Math.min(Math.max(size, 1), 100))
                         .query(query -> query.bool(b -> {
@@ -150,17 +154,17 @@ public class PolicyElasticSearchService {
     public List<PolicyDocument> search(PolicySearchCondition condition, int from, int size) throws IOException {
         // 인덱스 없으면 빈 리스트 반환
         boolean exists = esClient.indices()
-            .exists(ExistsRequest.of(r -> r.index(INDEX)))
+            .exists(ExistsRequest.of(r -> r.index(indexName)))
             .value();
         if (!exists) {
-            log.warn("Elasticsearch index '{}' does not exist. Returning empty result.", INDEX);
+            log.warn("Elasticsearch index '{}' does not exist. Returning empty result.", indexName);
             return List.of();
         }
 
         Query query = policyQueryBuilder.build(condition);
 
         SearchResponse<PolicyDocument> response = esClient.search(
-            s -> s.index(INDEX)
+            s -> s.index(indexName)
                 .from(Math.max(from, 0))
                 .size(Math.min(Math.max(size, 1), 100))
                 .query(query),
@@ -183,10 +187,19 @@ public class PolicyElasticSearchService {
      * @throws IOException Elasticsearch 연결/쿼리 오류 시
      */
     public SearchResult searchWithTotal(PolicySearchCondition condition, int from, int size) throws IOException {
+        boolean exists =
+                esClient.indices().exists(ExistsRequest.of(r -> r.index(indexName))).value();
+        if (!exists) {
+            log.warn(
+                    "Elasticsearch index '{}' does not exist. Returning empty result with total=0.",
+                    indexName);
+            return new SearchResult(List.of(), 0L);
+        }
+
         Query query = policyQueryBuilder.build(condition);
 
         SearchResponse<PolicyDocument> response = esClient.search(
-                s -> s.index(INDEX)
+                s -> s.index(indexName)
                         .from(Math.max(from, 0))
                         .size(Math.min(Math.max(size, 1), 100))
                         .query(query),
@@ -197,7 +210,10 @@ public class PolicyElasticSearchService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        return new SearchResult(documents, response.hits().total().value());
+        long total =
+                (response.hits().total() != null) ? response.hits().total().value() : 0L;
+
+        return new SearchResult(documents, total);
     }
 
     /**

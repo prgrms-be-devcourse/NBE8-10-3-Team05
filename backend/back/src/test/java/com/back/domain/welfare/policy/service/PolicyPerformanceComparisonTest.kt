@@ -45,7 +45,8 @@ import java.util.function.Function
         "logging.level.org.springframework=WARN",
         "logging.level.org.hibernate=WARN",
         "logging.level.org.hibernate.orm.jdbc=OFF",
-        "logging.level.org.elasticsearch=WARN"
+        "logging.level.org.elasticsearch=WARN",
+        "app.elasticsearch.policy-index=policy_performance"
     ]
 )
 @DisplayName("Policy 검색 성능 비교 테스트 (DB vs ElasticSearch)")
@@ -85,13 +86,13 @@ internal class PolicyPerformanceComparisonTest {
             return
         }
 
-        // 모든 policy* 인덱스 정리
+        // 이번 테스트에서 사용하는 인덱스만 정리
         println("🧹 전체 인덱스 정리")
         try {
             val response = elasticsearchClient.cat().indices()
             for (index in response.valueBody()) {
                 val indexName = index.index()
-                if (indexName != null && indexName.startsWith("policy")) {
+                if (indexName != null && indexName == INDEX) {
                     try {
                         elasticsearchClient.indices()
                             .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
@@ -140,7 +141,7 @@ internal class PolicyPerformanceComparisonTest {
             val response = elasticsearchClient!!.cat().indices()
             for (index in response.valueBody()) {
                 val indexName = index.index()
-                if (indexName != null && indexName.startsWith("policy")) {
+                if (indexName != null && indexName == INDEX) {
                     try {
                         elasticsearchClient.indices()
                             .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
@@ -483,7 +484,7 @@ internal class PolicyPerformanceComparisonTest {
     }
 
     companion object {
-        private const val INDEX = "policy"
+        private const val INDEX = "policy_performance"
         private const val WARMUP_ITERATIONS = 3
         private const val TEST_ITERATIONS = 10
         private const val MAX_WAIT_ATTEMPTS = 60

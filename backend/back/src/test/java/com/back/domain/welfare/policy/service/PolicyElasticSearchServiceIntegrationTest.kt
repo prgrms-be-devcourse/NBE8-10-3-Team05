@@ -39,9 +39,6 @@ internal class PolicyElasticSearchServiceIntegrationTest {
     private val policyRepository: PolicyRepository? = null
 
     @Autowired
-    var policyDocumentMapper: PolicyDocumentMapper? = null
-
-    @Autowired
     private val elasticsearchClient: ElasticsearchClient? = null
 
     private var elasticsearchAvailable = false
@@ -68,7 +65,7 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             var deletedCount = 0
             for (index in response.valueBody()) {
                 val indexName = index.index()
-                if (indexName != null && indexName.startsWith("policy")) {
+                if (indexName != null && indexName == INDEX) {
                     try {
                         elasticsearchClient.indices()
                             .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
