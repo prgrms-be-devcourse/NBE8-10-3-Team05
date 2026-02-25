@@ -1,3 +1,3 @@
-package com.back.global.springBatch.lawyer;
+package com.back.global.springBatch.lawyer
 
-public class LawyerApiItemProcessor {}
+class LawyerApiItemProcessor 
