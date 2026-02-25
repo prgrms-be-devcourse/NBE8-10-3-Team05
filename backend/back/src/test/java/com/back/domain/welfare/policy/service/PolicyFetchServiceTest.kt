@@ -2,7 +2,7 @@ package com.back.domain.welfare.policy.service
 
 import com.back.domain.welfare.policy.dto.PolicyFetchRequestDto
 import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto
-import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.Paging
+import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.Pagging
 import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.PolicyItem
 import com.back.domain.welfare.policy.entity.Policy
 import com.back.domain.welfare.policy.repository.PolicyRepository
@@ -10,13 +10,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.ArgumentMatchers.eq
 import org.mockito.InjectMocks
 import org.mockito.Mock
-import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
-import java.io.IOException
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class PolicyFetchServiceTest {
 
@@ -47,25 +48,24 @@ class PolicyFetchServiceTest {
         val item1 = createPolicyItem("PLCY001", "SBIZ001")
         val item2 = createPolicyItem("PLCY002", "SBIZ002")
 
-        val paging = Paging(totCount = 2, pageNum = 1, pageSize = 100)
-        val result = PolicyFetchResponseDto.Result(paging, listOf(item1, item2))
+        val pagging = Pagging(totCount = 2, pageNum = 1, pageSize = 100)
+        val result = PolicyFetchResponseDto.Result(pagging, listOf(item1, item2))
 
         responseDto = PolicyFetchResponseDto(0, "SUCCESS", result)
 
-        `when`(objectMapper.writeValueAsString(any())).thenReturn("{json}")
-        `when`(policyElasticSearchService.reindexAllFromDb()).thenReturn(0L)
+        whenever(objectMapper.writeValueAsString(any())).thenReturn("{json}")
+        whenever(policyElasticSearchService.reindexAllFromDb()).thenReturn(0L)
     }
 
     @Test
-    @Throws(IOException::class)
     fun `신규 정책만 저장된다`() {
         // given
-        `when`(
+        whenever(
             policyApiClient.fetchPolicyPage(any(), eq(1), eq(100))
         ).thenReturn(responseDto)
 
         // PLCY001 already exists
-        `when`(
+        whenever(
             policyRepository.findExistingPlcyNos(mutableSetOf("PLCY001", "PLCY002"))
         ).thenReturn(mutableSetOf("PLCY001"))
 
@@ -73,9 +73,8 @@ class PolicyFetchServiceTest {
         policyFetchService.fetchAndSavePolicies(requestDto)
 
         // then
-        verify(policyRepository, times(1)).saveAll(argThat<Iterable<Policy>> { policies ->
+        verify(policyRepository).saveAll(argThat<Iterable<Policy>> { policies ->
             assertThat(policies).hasSize(1)
-
             val saved = policies.first()
             assertThat(saved.plcyNo).isEqualTo("PLCY002")
             true
