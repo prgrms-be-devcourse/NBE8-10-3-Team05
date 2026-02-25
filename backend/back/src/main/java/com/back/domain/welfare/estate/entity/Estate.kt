@@ -1,112 +1,107 @@
-package com.back.domain.welfare.estate.entity;
+package com.back.domain.welfare.estate.entity
 
-import org.springframework.util.StringUtils;
-
-import com.back.domain.welfare.estate.dto.EstateDto;
-
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import com.back.domain.welfare.estate.dto.EstateDto
+import jakarta.persistence.*
+import org.springframework.util.StringUtils
 
 @Entity
 @Table(name = "estate")
-@Getter
-@NoArgsConstructor
-public class Estate {
+// JPA가 지연 로딩을 위해 Proxy를 만들 수 있도록 'all-open' 플러그인을 쓰거나 직접 open을 붙입니다.
+class Estate(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    val id: Long? = null,
 
     // --- 공고 기본 정보 ---
     @Column(name = "pblanc_id")
-    private String pblancId; // 공고 ID (고유 식별자 역할)
+    var pblancId: String? = null,
 
     @Column(name = "pblanc_nm")
-    private String pblancNm; // 공고명 (예: [시흥정왕 1블록 행복주택] 예비 입주자모집)
+    var pblancNm: String? = null,
 
     @Column(name = "sttus_nm")
-    private String sttusNm; // 공고 상태 (예: 모집중, 마감)
+    var sttusNm: String? = null,
 
     @Column(name = "rcrit_pblanc_de")
-    private String rcritPblancDe; // 모집 공고일 (YYYYMMDD)
+    var rcritPblancDe: String? = null,
 
     @Column(name = "begin_de")
-    private String beginDe; // 모집 시작일 (접수 시작)
+    var beginDe: String? = null,
 
     @Column(name = "end_de")
-    private String endDe; // 모집 종료일 (접수 마감)
+    var endDe: String? = null,
 
     // --- 주택 및 공급 정보 ---
     @Column(name = "suply_ho_co")
-    private String suplyHoCo; // 공급 호수 (몇 세대를 모집하는지)
+    var suplyHoCo: String? = null,
 
     @Column(name = "house_sn")
-    private Integer houseSn; // 주택 일련번호
+    var houseSn: Int? = null,
 
     @Column(name = "suply_instt_nm")
-    private String suplyInsttNm; // 공급 기관명 (예: LH, SH 등)
+    var suplyInsttNm: String? = null,
 
     @Column(name = "house_ty_nm")
-    private String houseTyNm; // 주택 유형 (예: 아파트, 오피스텔)
+    var houseTyNm: String? = null,
 
     @Column(name = "suply_ty_nm")
-    private String suplyTyNm; // 공급 유형 (예: 행복주택, 전세임대, 국민임대)
+    var suplyTyNm: String? = null,
 
     // --- 위치 및 단지 정보 ---
     @Column(name = "hsmp_nm")
-    private String hsmpNm; // 단지명
+    var hsmpNm: String? = null,
 
     @Column(name = "brtc_nm")
-    private String brtcNm; // 광역 시/도 명 (예: 경기도, 서울특별시)
+    var brtcNm: String? = null,
 
     @Column(name = "signgu_nm")
-    private String signguNm; // 시/군/구 명 (예: 시흥시, 강남구)
+    var signguNm: String? = null,
 
     @Column(name = "signgu_code")
-    private String signguCode; // 시/군/구 코드
+    var signguCode: String? = null,
 
     @Column(name = "full_adres")
-    private String fullAdres; // 전체 주소 (예: 경기도 시흥시 정왕동 1799-2)
+    var fullAdres: String? = null,
 
     // --- 금액 및 기타 ---
     @Column(name = "rent_gtn")
-    private Long rentGtn; // 임대 보증금 (단위: 원)
+    var rentGtn: Long? = null,
 
     @Column(name = "mt_rntchrg")
-    private Long mtRntchrg; // 월 임대료 (단위: 원)
+    var mtRntchrg: Long? = null,
 
-    @Column(length = 1000) // URL은 길어질 수 있으므로 길이 넉넉하게 지정
-    private String url; // 모집 공고 상세 페이지 URL
+    @Column(length = 1000)
+    var url: String? = null
+) {
+    // 생성자 로직을 companion object의 팩토리 메서드로 옮기거나,
+    // 아래와 같이 보조 생성자를 유지할 수 있습니다.
+    constructor(dto: EstateDto) : this(
+        pblancId = dto.pblancId,
+        pblancNm = dto.pblancNm,
+        sttusNm = dto.sttusNm,
+        rcritPblancDe = dto.rcritPblancDe,
+        beginDe = dto.beginDe,
+        endDe = dto.endDe,
+        suplyHoCo = dto.suplyHoCo,
+        houseSn = dto.houseSn,
+        suplyInsttNm = dto.suplyInsttNm,
+        houseTyNm = dto.houseTyNm,
+        suplyTyNm = dto.suplyTyNm,
+        hsmpNm = dto.hsmpNm,
+        brtcNm = dto.brtcNm,
+        signguNm = dto.signguNm,
+        signguCode = extractSignguCodeStatic(dto.pnu),
+        fullAdres = dto.fullAdres,
+        rentGtn = dto.rentGtn,
+        mtRntchrg = dto.mtRntchrg,
+        url = dto.url
+    )
 
-    public Estate(EstateDto dto) {
-        this.pblancId = dto.pblancId();
-        this.pblancNm = dto.pblancNm();
-        this.sttusNm = dto.sttusNm();
-        this.rcritPblancDe = dto.rcritPblancDe();
-        this.beginDe = dto.beginDe();
-        this.endDe = dto.endDe();
-
-        this.suplyHoCo = dto.suplyHoCo();
-        this.houseSn = dto.houseSn();
-        this.suplyInsttNm = dto.suplyInsttNm();
-        this.houseTyNm = dto.houseTyNm();
-        this.suplyTyNm = dto.suplyTyNm();
-
-        this.hsmpNm = dto.hsmpNm();
-        this.brtcNm = dto.brtcNm();
-        this.signguCode = extractSignguCode(dto.pnu());
-        this.signguNm = dto.signguNm();
-        this.fullAdres = dto.fullAdres();
-
-        this.rentGtn = dto.rentGtn();
-        this.mtRntchrg = dto.mtRntchrg();
-        this.url = dto.url();
-    }
-
-    private String extractSignguCode(String pnu) {
-        if (StringUtils.hasText(pnu) && pnu.length() >= 5) {
-            return pnu.substring(0, 5);
+    companion object {
+        private fun extractSignguCodeStatic(pnu: String?): String {
+            return if (StringUtils.hasText(pnu) && pnu!!.length >= 5) {
+                pnu.substring(0, 5)
+            } else ""
         }
-        return "";
     }
 }

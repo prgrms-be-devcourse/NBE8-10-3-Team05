@@ -1,41 +1,42 @@
-package com.back.domain.welfare.estate.entity;
+package com.back.domain.welfare.estate.entity
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.springframework.stereotype.Component;
-
-import com.back.domain.welfare.estate.dto.EstateRegionDto;
-import com.back.domain.welfare.estate.repository.EstateRepository;
-
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.back.domain.welfare.estate.dto.EstateRegionDto
+import com.back.domain.welfare.estate.repository.EstateRepository
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Component
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.function.Consumer
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
-public class EstateRegionCache {
-    @Getter
-    private List<EstateRegionDto> regionList = new CopyOnWriteArrayList<>();
+class EstateRegionCache(private val estateRepository: EstateRepository) {
 
-    private final EstateRepository estateRepository;
+    val regionList: MutableList<EstateRegionDto> = CopyOnWriteArrayList()
 
-    public void init() {
-        this.regionList.clear();
+    fun init() {
+        regionList.clear()
 
-        List<String> parents = estateRepository.findDistinctBrtcNmBy();
-        parents.forEach(p -> regionList.add(new EstateRegionDto(p, null, 1)));
+        // 부모 지역(Level 1) 추가
+        val parents = estateRepository.findDistinctBrtcNmBy()
+        parents.forEach { p ->
+            regionList.add(EstateRegionDto(p, null, 1))
+        }
 
-        List<Object[]> children = estateRepository.findDistinctBrtcNmAndSignguNmBy();
-        children.forEach(c -> {
-            String parentName = (String) c[0];
-            String childName = (String) c[1];
+        // 자식 지역(Level 2) 추가
+        val children = estateRepository.findDistinctBrtcNmAndSignguNmBy()
+        children.forEach { c ->
+            val parentName = c?.get(0) as? String
+            val childName = c?.get(1) as? String
+
             if (childName != null) {
-                regionList.add(new EstateRegionDto(childName, parentName, 2));
+                regionList.add(EstateRegionDto(childName, parentName, 2)!!)
             }
-        });
+        }
 
-        log.info("regionList init 완료 : {}", regionList);
+        log.info("regionList init 완료 : {}", regionList)
+    }
+
+    companion object {
+        private val log = LoggerFactory.getLogger(EstateRegionCache::class.java)
     }
 }
