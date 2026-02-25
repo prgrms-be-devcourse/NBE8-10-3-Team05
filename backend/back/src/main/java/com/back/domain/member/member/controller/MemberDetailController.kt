@@ -22,7 +22,7 @@ class MemberDetailController(
 
     @GetMapping("/detail")
     fun getMemberDetail(): ResponseEntity<MemberDetailRes> {
-        val actor = actorProvider.actor
+        val actor = actorProvider.getActor()
 
         val response = memberDetailService.getDetail(actor.id!!)
         return ResponseEntity.ok(response)
@@ -32,7 +32,7 @@ class MemberDetailController(
     fun modifyMemberDetail(
         @RequestBody @Valid reqBody: MemberDetailReq
     ): ResponseEntity<MemberDetailRes> {
-        val actor = actorProvider.actor
+        val actor = actorProvider.getActor()
 
         memberDetailService.modify(actor.id!!, reqBody)
         val response = memberDetailService.getDetail(actor.id!!)
@@ -43,7 +43,7 @@ class MemberDetailController(
     @PutMapping("/detail/address")
     fun updateAddress(@RequestBody @Valid address: Address
     ): ResponseEntity<MemberDetailRes> {
-        val actor = actorProvider.actor
+        val actor = actorProvider.getActor()
 
         memberDetailService.updateAddress(actor.id!!, address)
         val response = memberDetailService.getDetail(actor.id!!)
