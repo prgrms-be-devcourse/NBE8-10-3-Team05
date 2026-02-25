@@ -23,7 +23,6 @@ class PolicyFetchService(
     }
 
     @Transactional
-    @Deprecated("")
     @Throws(IOException::class)
     fun fetchAndSavePolicies(requestDto: PolicyFetchRequestDto?) {
 
