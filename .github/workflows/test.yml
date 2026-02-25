@@ -88,6 +88,8 @@ jobs:
             }
           CUSTOM_API_ESTATE_KEY: ${{secrets.CUSTOM_API_ESTATE_KEY}}
           CUSTOM_API_ESTATE_URL: ${{secrets.CUSTOM_API_ESTATE_URL}}
+          CUSTOM_API_GEO_URL: ${{ secrets.CUSTOM_API_GEO_URL }}
+          CUSTOM_API_GEO_KEY: ${{ secrets.CUSTOM_API_GEO_KEY }}
           SPRING_DATA_REDIS_HOST: localhost
           SPRING_DATA_REDIS_PORT: 6379
           CUSTOM_ELASTICSEARCH_HOST: localhost
