@@ -1,16 +1,12 @@
-package com.back.global.springBatch.center;
+package com.back.global.springBatch.center
 
-import org.springframework.batch.infrastructure.item.ItemProcessor;
-import org.springframework.stereotype.Component;
-
-import com.back.domain.welfare.center.center.dto.CenterApiResponseDto;
-import com.back.domain.welfare.center.center.dto.CenterApiResponseDtoKt;
-import com.back.domain.welfare.center.center.entity.Center;
+import com.back.domain.welfare.center.center.dto.CenterApiResponseDto.CenterDto
+import com.back.domain.welfare.center.center.dto.dtoToEntity
+import com.back.domain.welfare.center.center.entity.Center
+import org.springframework.batch.infrastructure.item.ItemProcessor
+import org.springframework.stereotype.Component
 
 @Component
-public class CenterApiItemProcessor implements ItemProcessor<CenterApiResponseDto.CenterDto, Center> {
-    @Override
-    public Center process(CenterApiResponseDto.CenterDto centerDto) throws Exception {
-        return CenterApiResponseDtoKt.dtoToEntity(centerDto);
-    }
+class CenterApiItemProcessor : ItemProcessor<CenterDto, Center> {
+    override fun process(item: CenterDto): Center = item.dtoToEntity()
 }
