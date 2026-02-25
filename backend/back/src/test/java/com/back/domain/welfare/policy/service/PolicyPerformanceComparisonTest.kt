@@ -1,553 +1,492 @@
-package com.back.domain.welfare.policy.service;
+package com.back.domain.welfare.policy.service
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
-import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.back.domain.welfare.policy.dto.PolicySearchRequestDto;
-import com.back.domain.welfare.policy.dto.PolicySearchResponseDto;
-import com.back.domain.welfare.policy.entity.Policy;
-import com.back.domain.welfare.policy.repository.PolicyRepository;
-import com.back.domain.welfare.policy.search.PolicySearchCondition;
-
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch.core.CountRequest;
-import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
+import co.elastic.clients.elasticsearch.ElasticsearchClient
+import co.elastic.clients.elasticsearch.core.CountRequest
+import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest
+import co.elastic.clients.elasticsearch.indices.ExistsRequest
+import co.elastic.clients.elasticsearch.indices.RefreshRequest
+import com.back.domain.welfare.policy.dto.PolicySearchRequestDto
+import com.back.domain.welfare.policy.dto.PolicySearchResponseDto
+import com.back.domain.welfare.policy.entity.Policy
+import com.back.domain.welfare.policy.entity.Policy.Companion.builder
+import com.back.domain.welfare.policy.repository.PolicyRepository
+import com.back.domain.welfare.policy.search.PolicySearchCondition
+import org.junit.jupiter.api.*
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.annotation.DirtiesContext
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
+import org.springframework.transaction.annotation.Transactional
+import java.io.IOException
+import java.util.*
+import java.util.concurrent.TimeUnit
+import java.util.function.Function
 
 @SpringBootTest
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-// CI 환경에서는 이 테스트 클래스 전체를 실행하지 않음
-@DisabledIfEnvironmentVariable(named = "CI", matches = "true", disabledReason = "성능 테스트는 CI 환경에서 실행하지 않습니다")
-// GitHub Actions 환경에서도 비활성화
 @DisabledIfEnvironmentVariable(
-        named = "GITHUB_ACTIONS",
-        matches = "true",
-        disabledReason = "성능 테스트는 GitHub Actions에서 실행하지 않습니다")
-// Gradle CI 환경에서도 비활성화
+    named = "CI",
+    matches = "true",
+    disabledReason = "성능 테스트는 CI 환경에서 실행하지 않습니다"
+)
+@DisabledIfEnvironmentVariable(
+    named = "GITHUB_ACTIONS",
+    matches = "true",
+    disabledReason = "성능 테스트는 GitHub Actions에서 실행하지 않습니다"
+)
 @DisabledIfSystemProperty(named = "ci", matches = "true", disabledReason = "성능 테스트는 CI 환경에서 실행하지 않습니다")
 @TestPropertySource(
-        properties = {
-            "logging.level.root=WARN",
-            "logging.level.org.springframework=WARN",
-            "logging.level.org.hibernate=WARN",
-            "logging.level.org.hibernate.orm.jdbc=OFF",
-            "logging.level.org.elasticsearch=WARN"
-        })
+    properties = [
+        "logging.level.root=WARN",
+        "logging.level.org.springframework=WARN",
+        "logging.level.org.hibernate=WARN",
+        "logging.level.org.hibernate.orm.jdbc=OFF",
+        "logging.level.org.elasticsearch=WARN"
+    ]
+)
 @DisplayName("Policy 검색 성능 비교 테스트 (DB vs ElasticSearch)")
-class PolicyPerformanceComparisonTest {
-
-    private static final String INDEX = "policy";
-    private static final int WARMUP_ITERATIONS = 3;
-    private static final int TEST_ITERATIONS = 10;
-    private static final int MAX_WAIT_ATTEMPTS = 60;
-    private static final long WAIT_INTERVAL_MS = 300;
+internal class PolicyPerformanceComparisonTest {
+    @Autowired
+    private val policyService: PolicyService? = null
 
     @Autowired
-    private PolicyService policyService;
+    private val policyElasticSearchService: PolicyElasticSearchService? = null
 
     @Autowired
-    private PolicyElasticSearchService policyElasticSearchService;
+    private val policyRepository: PolicyRepository? = null
 
     @Autowired
-    private PolicyRepository policyRepository;
+    private val elasticsearchClient: ElasticsearchClient? = null
 
-    @Autowired
-    private ElasticsearchClient elasticsearchClient;
-
-    private boolean elasticsearchAvailable = false;
-    private int testDataCount = 0;
+    private var elasticsearchAvailable = false
+    private var testDataCount = 0
 
     @BeforeEach
-    @Transactional
-    void setUp() throws Exception {
-        System.out.println("\n========== 성능 테스트 시작 ==========");
+    // @Transactional 제거: 트랜잭션이 커밋되기 전에 reindexAllFromDb()가 실행되면
+    // DB 데이터를 읽지 못해 인덱스가 비거나 인덱스 자체가 생성되지 않는 문제 발생
+    @Throws(Exception::class)
+    fun setUp() {
+        println("\n========== 성능 테스트 시작 ==========")
 
-        // Elasticsearch 서버 연결 확인
         try {
-            elasticsearchAvailable = elasticsearchClient.ping().value();
+            elasticsearchAvailable = elasticsearchClient!!.ping().value()
             if (!elasticsearchAvailable) {
-                System.out.println("⚠️ Elasticsearch 서버가 실행 중이지 않습니다.");
-                return;
+                println("⚠️ Elasticsearch 서버가 실행 중이지 않습니다.")
+                return
             }
-            System.out.println("✅ Elasticsearch 연결 성공");
-        } catch (Exception e) {
-            System.out.println("⚠️ Elasticsearch 연결 실패: " + e.getMessage());
-            elasticsearchAvailable = false;
-            return;
+            println("✅ Elasticsearch 연결 성공")
+        } catch (e: Exception) {
+            println("⚠️ Elasticsearch 연결 실패: " + e.message)
+            elasticsearchAvailable = false
+            return
         }
 
         // 모든 policy* 인덱스 정리
-        System.out.println("🧹 전체 인덱스 정리");
+        println("🧹 전체 인덱스 정리")
         try {
-            var response = elasticsearchClient.cat().indices();
-            for (var index : response.valueBody()) {
-                String indexName = index.index();
+            val response = elasticsearchClient.cat().indices()
+            for (index in response.valueBody()) {
+                val indexName = index.index()
                 if (indexName != null && indexName.startsWith("policy")) {
                     try {
-                        elasticsearchClient.indices().delete(DeleteIndexRequest.of(d -> d.index(indexName)));
-                        System.out.println("  - 삭제: " + indexName);
-                    } catch (Exception e) {
+                        elasticsearchClient.indices()
+                            .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
+                                d!!.index(indexName)
+                            }))
+                        println("  - 삭제: " + indexName)
+                    } catch (e: Exception) {
                         // 무시
                     }
                 }
             }
-            Thread.sleep(2000);
-        } catch (Exception e) {
-            System.out.println("  - 인덱스 정리 실패 (무시): " + e.getMessage());
+            Thread.sleep(2000)
+        } catch (e: Exception) {
+            println("  - 인덱스 정리 실패 (무시): " + e.message)
         }
 
         // DB 데이터 정리
-        System.out.println("🧹 DB 정리");
-        policyRepository.deleteAll();
-        policyRepository.flush();
+        println("🧹 DB 정리")
+        policyRepository!!.deleteAll()
+        policyRepository.flush()
 
-        // 테스트 데이터 생성
-        testDataCount = Integer.parseInt(System.getProperty("test.data.count", "100"));
-        System.out.println("📝 테스트 데이터 생성: " + testDataCount + "건");
-        createTestData(testDataCount);
+        // 테스트 데이터 생성 (별도 트랜잭션으로 커밋 보장)
+        testDataCount = System.getProperty("test.data.count", "100").toInt()
+        println("📝 테스트 데이터 생성: " + testDataCount + "건")
+        createTestData(testDataCount)
 
         // 인덱스 생성
-        System.out.println("📝 인덱스 생성");
-        policyElasticSearchService.ensureIndex();
-        waitForIndexCreation();
+        println("📝 인덱스 생성")
+        policyElasticSearchService!!.ensureIndex()
+        waitForIndexCreation()
 
-        // ES 인덱싱
-        System.out.println("📝 Elasticsearch 인덱싱");
-        policyElasticSearchService.reindexAllFromDb();
-        waitForIndexing(testDataCount);
+        // ES 인덱싱 (DB 커밋 완료 후 실행됨)
+        println("📝 Elasticsearch 인덱싱")
+        policyElasticSearchService.reindexAllFromDb()
+        waitForIndexing(testDataCount.toLong())
 
-        System.out.println("✅ 준비 완료\n");
+        println("✅ 준비 완료\n")
     }
 
     @AfterEach
-    void tearDown() throws Exception {
-        if (!elasticsearchAvailable) {
-            return;
-        }
+    @Throws(Exception::class)
+    fun tearDown() {
+        if (!elasticsearchAvailable) return
 
-        // 모든 policy* 인덱스 정리
         try {
-            var response = elasticsearchClient.cat().indices();
-            for (var index : response.valueBody()) {
-                String indexName = index.index();
+            val response = elasticsearchClient!!.cat().indices()
+            for (index in response.valueBody()) {
+                val indexName = index.index()
                 if (indexName != null && indexName.startsWith("policy")) {
                     try {
-                        elasticsearchClient.indices().delete(DeleteIndexRequest.of(d -> d.index(indexName)));
-                    } catch (Exception e) {
+                        elasticsearchClient.indices()
+                            .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
+                                d!!.index(indexName)
+                            }))
+                    } catch (e: Exception) {
                         // 무시
                     }
                 }
             }
-            Thread.sleep(500);
-        } catch (Exception e) {
+            Thread.sleep(500)
+        } catch (e: Exception) {
             // 무시
         }
     }
 
-    /**
-     * 인덱스 생성 대기
-     */
-    private void waitForIndexCreation() throws Exception {
-        for (int i = 0; i < 30; i++) {
+    @Throws(Exception::class)
+    private fun waitForIndexCreation() {
+        for (i in 0..29) {
             try {
-                if (elasticsearchClient.indices().exists(e -> e.index(INDEX)).value()) {
-                    System.out.println("  - 인덱스 생성 확인");
-                    Thread.sleep(500);
-                    return;
+                if (elasticsearchClient!!.indices()
+                        .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) }).value()
+                ) {
+                    println("  - 인덱스 생성 확인")
+                    Thread.sleep(500)
+                    return
                 }
-            } catch (Exception e) {
+            } catch (e: Exception) {
                 // 계속 시도
             }
-            Thread.sleep(200);
+            Thread.sleep(200)
         }
-        throw new AssertionError("❌ 인덱스 생성 실패");
+        throw AssertionError("❌ 인덱스 생성 실패")
     }
 
-    /**
-     * Elasticsearch 인덱싱 완료 대기
-     */
-    private void waitForIndexing(long expectedCount) throws Exception {
-        System.out.println("  - 인덱싱 대기: " + expectedCount + "건");
+    @Throws(Exception::class)
+    private fun waitForIndexing(expectedCount: Long) {
+        println("  - 인덱싱 대기: " + expectedCount + "건")
 
-        elasticsearchClient.indices().refresh(r -> r.index(INDEX));
+        elasticsearchClient!!.indices().refresh(Function { r: RefreshRequest.Builder? -> r!!.index(INDEX) })
 
-        long lastCount = -1;
-        for (int attempt = 0; attempt < MAX_WAIT_ATTEMPTS; attempt++) {
+        var lastCount: Long = -1
+        for (attempt in 0..<MAX_WAIT_ATTEMPTS) {
             try {
-                long count = elasticsearchClient
-                        .count(CountRequest.of(c -> c.index(INDEX)))
-                        .count();
+                val count = elasticsearchClient
+                    .count(CountRequest.of(Function { c: CountRequest.Builder? -> c!!.index(INDEX) }))
+                    .count()
 
                 if (count != lastCount && attempt % 10 == 0) {
-                    System.out.println("    현재: " + count + " / " + expectedCount);
-                    lastCount = count;
+                    println("    현재: " + count + " / " + expectedCount)
+                    lastCount = count
                 }
 
                 if (count >= expectedCount) {
-                    System.out.println("  - 인덱싱 완료: " + count + "건");
-                    Thread.sleep(1000); // 최종 안정화
-                    return;
+                    println("  - 인덱싱 완료: " + count + "건")
+                    Thread.sleep(1000)
+                    return
                 }
 
                 if (attempt > 0 && attempt % 10 == 0) {
-                    elasticsearchClient.indices().refresh(r -> r.index(INDEX));
+                    elasticsearchClient.indices().refresh(Function { r: RefreshRequest.Builder? -> r!!.index(INDEX) })
                 }
-            } catch (Exception e) {
-                if (attempt % 10 == 0) {
-                    System.out.println("    에러: " + e.getMessage());
-                }
+            } catch (e: Exception) {
+                if (attempt % 10 == 0) println("    에러: " + e.message)
             }
 
-            Thread.sleep(WAIT_INTERVAL_MS);
+            Thread.sleep(WAIT_INTERVAL_MS)
         }
 
-        throw new AssertionError("❌ 인덱싱 타임아웃: " + expectedCount + "건 대기 실패");
+        throw AssertionError("❌ 인덱싱 타임아웃: " + expectedCount + "건 대기 실패")
     }
 
     @Test
     @DisplayName("나이 조건 검색 성능 비교")
-    void comparePerformance_byAge() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_byAge() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        // DB: 정책 나이 [min,max]가 사용자 구간 [25,35] 안에 포함(min≥25, max≤35). createTestData에서 i%10==0 인 정책이 [25,35].
-        // ES: 사용자 나이 30이 정책 [min,max]에 포함(min≤30, max≥30).
-        PolicySearchRequestDto dbRequest = new PolicySearchRequestDto(25, 35, null, null, null, null, null);
+        val dbRequest = PolicySearchRequestDto(25, 35, null, null, null, null, null)
+        val esCondition = PolicySearchCondition(age = 30)
 
-        PolicySearchCondition esCondition =
-                PolicySearchCondition.builder().age(30).build();
-
-        // When & Then
-        PerformanceResult dbResult = measureDbPerformance(() -> policyService.search(dbRequest));
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        printComparisonResult("나이 조건 검색", dbResult, esResult);
+        printComparisonResult("나이 조건 검색", dbResult, esResult)
     }
 
     @Test
     @DisplayName("소득 조건 검색 성능 비교")
-    void comparePerformance_byEarn() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_byEarn() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        // DB: 정책 소득 [earnMin,earnMax]가 사용자 구간 [2000,4000] 안에 포함(earnMin≥2000, earnMax≤4000).
-        //     → [2k,3k], [3k,4k]만 매칭(20건). ES: 사용자 소득 3000이 정책 구간에 포함 → 동일 20건.
-        //     (기존 2000~5000이면 [4k,5k]까지 포함돼 DB 30건, ES 20건으로 어긋남)
-        PolicySearchRequestDto dbRequest = new PolicySearchRequestDto(null, null, null, null, null, 2000, 4000);
+        val dbRequest = PolicySearchRequestDto(null, null, null, null, null, 2000, 4000)
+        val esCondition = PolicySearchCondition(earn = 3000)
 
-        PolicySearchCondition esCondition =
-                PolicySearchCondition.builder().earn(3000).build();
-
-        // When & Then
-        PerformanceResult dbResult = measureDbPerformance(() -> policyService.search(dbRequest));
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        printComparisonResult("소득 조건 검색", dbResult, esResult);
+        printComparisonResult("소득 조건 검색", dbResult, esResult)
     }
 
     @Test
     @DisplayName("지역 코드 검색 성능 비교")
-    void comparePerformance_byRegion() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_byRegion() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        // Given
-        PolicySearchRequestDto dbRequest = new PolicySearchRequestDto(null, null, "11", null, null, null, null);
+        val dbRequest = PolicySearchRequestDto(null, null, "11", null, null, null, null)
+        val esCondition = PolicySearchCondition(regionCode = "11")
 
-        PolicySearchCondition esCondition =
-                PolicySearchCondition.builder().regionCode("11").build();
-
-        // When & Then
-        PerformanceResult dbResult = measureDbPerformance(() -> policyService.search(dbRequest));
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        printComparisonResult("지역 코드 검색", dbResult, esResult);
+        printComparisonResult("지역 코드 검색", dbResult, esResult)
     }
 
     @Test
     @DisplayName("키워드 검색 성능 비교 (ES만 지원)")
-    void comparePerformance_byKeyword() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_byKeyword() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        // Given
-        PolicySearchCondition esCondition =
-                PolicySearchCondition.builder().keyword("청년").build();
+        val esCondition = PolicySearchCondition(keyword = "청년")
 
-        // When & Then
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        System.out.println("=".repeat(80));
-        System.out.println("키워드 검색 (ES 전용 기능)");
-        System.out.println("  결과 수: " + esResult.getResultCount());
-        System.out.println("  평균 응답 시간: " + esResult.getAverageTime() + "ms");
-        System.out.println("  중간값: " + esResult.getMedianTime() + "ms");
-        System.out.println("  최소/최대: " + esResult.getMinTime() + "/" + esResult.getMaxTime() + "ms");
-        System.out.println("=".repeat(80));
+        println("=".repeat(80))
+        println("키워드 검색 (ES 전용 기능)")
+        println("  결과 수: " + esResult.resultCount)
+        println("  평균 응답 시간: " + esResult.averageTime + "ms")
+        println("  중간값: " + esResult.medianTime + "ms")
+        println("  최소/최대: " + esResult.minTime + "/" + esResult.maxTime + "ms")
+        println("=".repeat(80))
     }
 
     @Test
     @DisplayName("복합 조건 검색 성능 비교")
-    void comparePerformance_byMultipleConditions() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_byMultipleConditions() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        // Given
-        PolicySearchRequestDto dbRequest = new PolicySearchRequestDto(20, 39, "11", null, null, 0, 5000);
+        val dbRequest = PolicySearchRequestDto(20, 39, "11", null, null, 0, 5000)
+        val esCondition = PolicySearchCondition(age = 25, regionCode = "11", earn = 3000)
 
-        PolicySearchCondition esCondition = PolicySearchCondition.builder()
-                .age(25)
-                .regionCode("11")
-                .earn(3000)
-                .build();
-
-        // When & Then
-        PerformanceResult dbResult = measureDbPerformance(() -> policyService.search(dbRequest));
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        printComparisonResult("복합 조건 검색", dbResult, esResult);
+        printComparisonResult("복합 조건 검색", dbResult, esResult)
     }
 
     @Test
     @DisplayName("전체 검색 성능 비교 (조건 없음)")
-    void comparePerformance_all() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_all() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        // Given
-        PolicySearchRequestDto dbRequest = new PolicySearchRequestDto(null, null, null, null, null, null, null);
+        val dbRequest = PolicySearchRequestDto(null, null, null, null, null, null, null)
+        val esCondition = PolicySearchCondition()
 
-        PolicySearchCondition esCondition = PolicySearchCondition.builder().build();
-
-        // When & Then
-        PerformanceResult dbResult = measureDbPerformance(() -> policyService.search(dbRequest));
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        printComparisonResult("전체 검색", dbResult, esResult);
+        printComparisonResult("전체 검색", dbResult, esResult)
     }
 
     @Test
     @DisplayName("데이터 양에 따른 성능 비교 (100 vs 1000 vs 10000)")
-    void comparePerformance_byDataSize() {
-        assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다");
+    fun comparePerformance_byDataSize() {
+        Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-        System.out.println("=".repeat(80));
-        System.out.println("데이터 양에 따른 성능 테스트");
-        System.out.println("현재 데이터: " + testDataCount + "건");
-        System.out.println("더 많은 데이터로 테스트하려면: -Dtest.data.count=1000");
-        System.out.println("=".repeat(80));
+        println("=".repeat(80))
+        println("데이터 양에 따른 성능 테스트")
+        println("현재 데이터: " + testDataCount + "건")
+        println("더 많은 데이터로 테스트하려면: -Dtest.data.count=1000")
+        println("=".repeat(80))
 
-        PolicySearchCondition esCondition =
-                PolicySearchCondition.builder().age(30).build();
+        val esCondition = PolicySearchCondition(age = 30)
 
-        PerformanceResult esResult = measureEsPerformance(() -> {
+        val esResult = measureEsPerformance {
             try {
-                return policyElasticSearchService.search(esCondition, 0, 100);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        });
+        }
 
-        System.out.println("ES 검색 성능 (" + testDataCount + "건)");
-        System.out.println("  평균: " + esResult.getAverageTime() + "ms");
-        System.out.println("  중간값: " + esResult.getMedianTime() + "ms");
+        println("ES 검색 성능 (" + testDataCount + "건)")
+        println("  평균: " + esResult.averageTime + "ms")
+        println("  중간값: " + esResult.medianTime + "ms")
     }
 
     // ========== Helper Methods ==========
-    private void createTestData(int count) {
-        List<Policy> policies = new ArrayList<>();
 
-        for (int i = 0; i < count; i++) {
-            String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    // @Transactional: createTestData 내 DB 저장이 이 메서드 종료 시 커밋됨
+    // → setUp()에서 트랜잭션 없이 호출하면 saveAll/flush 후 즉시 커밋 보장
+    @Transactional
+    fun createTestData(count: Int) {
+        val policies = mutableListOf<Policy>()
 
-            int minAge;
-            int maxAge;
+        for (i in 0..<count) {
+            val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+
+            val minAge: Int
+            val maxAge: Int
             if (i % 10 == 0) {
-                // DB 나이 조건(25~35)에 매칭되도록: 정책 [25,35]
-                minAge = 25;
-                maxAge = 35;
+                minAge = 25
+                maxAge = 35
             } else {
-                minAge = 20 + (i % 50);
-                maxAge = 40 + (i % 30);
+                minAge = 20 + (i % 50)
+                maxAge = 40 + (i % 30)
             }
 
-            Policy policy = Policy.builder()
-                    .plcyNo("PERF-" + i + "-" + uniqueId)
-                    .plcyNm("정책 " + i)
-                    .sprtTrgtMinAge(String.valueOf(minAge))
-                    .sprtTrgtMaxAge(String.valueOf(maxAge))
-                    .sprtTrgtAgeLmtYn("Y")
-                    .earnCndSeCd("연소득")
-                    .earnMinAmt(String.valueOf((i % 10) * 1000))
-                    .earnMaxAmt(String.valueOf((i % 10 + 1) * 1000))
-                    .zipCd(String.valueOf(11 + (i % 17)))
-                    .jobCd("J" + String.format("%02d", i % 10))
-                    .schoolCd("S" + String.format("%02d", i % 5))
-                    .mrgSttsCd(i % 2 == 0 ? "Y" : "N")
-                    .plcyKywdNm((i % 2 == 0 ? "청년" : "중장년") + ",지원")
-                    .plcyExplnCn("정책 설명 " + i)
-                    .build();
+            val policy = builder()
+                .plcyNo("PERF-" + i + "-" + uniqueId)
+                .plcyNm("정책 " + i)
+                .sprtTrgtMinAge(minAge.toString())
+                .sprtTrgtMaxAge(maxAge.toString())
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("연소득")
+                .earnMinAmt(((i % 10) * 1000).toString())
+                .earnMaxAmt(((i % 10 + 1) * 1000).toString())
+                .zipCd((11 + (i % 17)).toString())
+                .jobCd("J" + String.format("%02d", i % 10))
+                .schoolCd("S" + String.format("%02d", i % 5))
+                .mrgSttsCd(if (i % 2 == 0) "Y" else "N")
+                .plcyKywdNm((if (i % 2 == 0) "청년" else "중장년") + ",지원")
+                .plcyExplnCn("정책 설명 " + i)
+                .build()
 
-            policies.add(policy);
+            policies.add(policy)
         }
 
-        policyRepository.saveAll(policies);
-        policyRepository.flush();
+        policyRepository!!.saveAll(policies)
+        policyRepository.flush()
     }
 
-    private PerformanceResult measureDbPerformance(Supplier<List<PolicySearchResponseDto>> supplier) {
-        // Warmup
-        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
-            supplier.get();
+    private fun measureDbPerformance(block: () -> List<PolicySearchResponseDto?>?): PerformanceResult {
+        repeat(WARMUP_ITERATIONS) { block() }
+
+        val times = mutableListOf<Long>()
+        var resultCount = 0
+
+        repeat(TEST_ITERATIONS) { i ->
+            val start = System.nanoTime()
+            val results = block()
+            val end = System.nanoTime()
+            times.add(TimeUnit.NANOSECONDS.toMillis(end - start))
+            if (i == 0) resultCount = results?.size ?: 0
         }
 
-        // Measure
-        List<Long> times = new ArrayList<>();
-        int resultCount = 0;
-
-        for (int i = 0; i < TEST_ITERATIONS; i++) {
-            long start = System.nanoTime();
-            List<PolicySearchResponseDto> results = supplier.get();
-            long end = System.nanoTime();
-
-            times.add(TimeUnit.NANOSECONDS.toMillis(end - start));
-            if (i == 0) {
-                resultCount = results.size();
-            }
-        }
-
-        return new PerformanceResult(times, resultCount);
+        return PerformanceResult(times, resultCount)
     }
 
-    private PerformanceResult measureEsPerformance(Supplier<?> supplier) {
-        // Warmup
-        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
-            supplier.get();
+    private fun measureEsPerformance(block: () -> Any?): PerformanceResult {
+        repeat(WARMUP_ITERATIONS) { block() }
+
+        val times = mutableListOf<Long>()
+        var resultCount = 0
+
+        repeat(TEST_ITERATIONS) { i ->
+            val start = System.nanoTime()
+            val results = block()
+            val end = System.nanoTime()
+            times.add(TimeUnit.NANOSECONDS.toMillis(end - start))
+            if (i == 0 && results is List<*>) resultCount = results.size
         }
 
-        // Measure
-        List<Long> times = new ArrayList<>();
-        int resultCount = 0;
-
-        for (int i = 0; i < TEST_ITERATIONS; i++) {
-            long start = System.nanoTime();
-            Object results = supplier.get();
-            long end = System.nanoTime();
-
-            times.add(TimeUnit.NANOSECONDS.toMillis(end - start));
-            if (i == 0 && results instanceof List) {
-                resultCount = ((List<?>) results).size();
-            }
-        }
-
-        return new PerformanceResult(times, resultCount);
+        return PerformanceResult(times, resultCount)
     }
 
-    private void printComparisonResult(String testName, PerformanceResult dbResult, PerformanceResult esResult) {
-        System.out.println("=".repeat(80));
-        System.out.println(testName);
-        System.out.println("-".repeat(80));
-        System.out.println("DB 검색:");
-        System.out.println("  결과 수: " + dbResult.getResultCount());
-        System.out.println("  평균: " + dbResult.getAverageTime() + "ms");
-        System.out.println("  중간값: " + dbResult.getMedianTime() + "ms");
-        System.out.println("  최소/최대: " + dbResult.getMinTime() + "/" + dbResult.getMaxTime() + "ms");
-        System.out.println();
-        System.out.println("ES 검색:");
-        System.out.println("  결과 수: " + esResult.getResultCount());
-        System.out.println("  평균: " + esResult.getAverageTime() + "ms");
-        System.out.println("  중간값: " + esResult.getMedianTime() + "ms");
-        System.out.println("  최소/최대: " + esResult.getMinTime() + "/" + esResult.getMaxTime() + "ms");
-        System.out.println();
+    private fun printComparisonResult(testName: String, dbResult: PerformanceResult, esResult: PerformanceResult) {
+        println("=".repeat(80))
+        println(testName)
+        println("-".repeat(80))
+        println("DB 검색:")
+        println("  결과 수: " + dbResult.resultCount)
+        println("  평균: " + dbResult.averageTime + "ms")
+        println("  중간값: " + dbResult.medianTime + "ms")
+        println("  최소/최대: " + dbResult.minTime + "/" + dbResult.maxTime + "ms")
+        println()
+        println("ES 검색:")
+        println("  결과 수: " + esResult.resultCount)
+        println("  평균: " + esResult.averageTime + "ms")
+        println("  중간값: " + esResult.medianTime + "ms")
+        println("  최소/최대: " + esResult.minTime + "/" + esResult.maxTime + "ms")
+        println()
 
-        double improvement =
-                ((double) (dbResult.getAverageTime() - esResult.getAverageTime()) / dbResult.getAverageTime()) * 100;
-        System.out.println(
-                "성능 차이: " + String.format("%.2f%%", improvement) + (improvement > 0 ? " (ES가 빠름)" : " (DB가 빠름)"));
-        System.out.println("=".repeat(80));
+        val improvement = ((dbResult.averageTime - esResult.averageTime).toDouble() / dbResult.averageTime) * 100
+        println(
+            "성능 차이: " + String.format("%.2f%%", improvement) + (if (improvement > 0) " (ES가 빠름)" else " (DB가 빠름)")
+        )
+        println("=".repeat(80))
     }
 
-    @FunctionalInterface
-    private interface Supplier<T> {
-        T get();
+    private class PerformanceResult(times: List<Long>, val resultCount: Int) {
+        private val times: List<Long> = times.sortedWith(compareBy { it })
+
+        val averageTime: Long
+            get() = times.average().toLong()
+
+        val medianTime: Long
+            get() = times[times.size / 2]
+
+        val minTime: Long
+            get() = times.first()
+
+        val maxTime: Long
+            get() = times.last()
     }
 
-    private static class PerformanceResult {
-        private final List<Long> times;
-        private final int resultCount;
-
-        public PerformanceResult(List<Long> times, int resultCount) {
-            this.times = new ArrayList<>(times);
-            this.times.sort(Long::compareTo);
-            this.resultCount = resultCount;
-        }
-
-        public long getAverageTime() {
-            return (long) times.stream().mapToLong(Long::longValue).average().orElse(0);
-        }
-
-        public long getMedianTime() {
-            return times.get(times.size() / 2);
-        }
-
-        public long getMinTime() {
-            return times.get(0);
-        }
-
-        public long getMaxTime() {
-            return times.get(times.size() - 1);
-        }
-
-        public int getResultCount() {
-            return resultCount;
-        }
+    companion object {
+        private const val INDEX = "policy"
+        private const val WARMUP_ITERATIONS = 3
+        private const val TEST_ITERATIONS = 10
+        private const val MAX_WAIT_ATTEMPTS = 60
+        private const val WAIT_INTERVAL_MS: Long = 300
     }
 }

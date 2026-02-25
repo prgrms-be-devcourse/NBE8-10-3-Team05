@@ -1,17 +1,13 @@
-package com.back.domain.welfare.policy.service;
+package com.back.domain.welfare.policy.service
 
-import java.io.IOException;
-import java.util.List;
-
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.back.domain.welfare.policy.document.PolicyDocument;
-import com.back.domain.welfare.policy.search.PolicySearchCondition;
-
-import lombok.RequiredArgsConstructor;
+import com.back.domain.welfare.policy.document.PolicyDocument
+import com.back.domain.welfare.policy.search.PolicySearchCondition
+import lombok.RequiredArgsConstructor
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import java.io.IOException
 
 /**
  * PolicyElasticSearchService 사용 예시 (컨트롤러에서 어떻게 사용하는지)
@@ -21,9 +17,8 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/exampleApi/v1/welfare/policy/es/")
 @RequiredArgsConstructor
-public class PolicyElasticSearchServiceUsageExample {
-
-    private final PolicyElasticSearchService policyElasticSearchService;
+class PolicyElasticSearchServiceUsageExample {
+    private val policyElasticSearchService: PolicyElasticSearchService? = null
 
     /**
      * 예시 1: PolicySearchCondition을 사용한 고급 검색
@@ -31,33 +26,34 @@ public class PolicyElasticSearchServiceUsageExample {
      * GET /api/v1/welfare/policy/es/search?keyword=청년&age=25&earn=3000&regionCode=11&from=0&size=10
      */
     @GetMapping("/search")
-    public List<PolicyDocument> search(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer age,
-            @RequestParam(required = false) Integer earn,
-            @RequestParam(required = false) String regionCode,
-            @RequestParam(required = false) String jobCode,
-            @RequestParam(required = false) String schoolCode,
-            @RequestParam(required = false) String marriageStatus,
-            @RequestParam(required = false) List<String> keywords,
-            @RequestParam(defaultValue = "0") int from,
-            @RequestParam(defaultValue = "10") int size)
-            throws IOException {
-
+    @Throws(IOException::class)
+    fun search(
+        @RequestParam(required = false) keyword: String?,
+        @RequestParam(required = false) age: Int?,
+        @RequestParam(required = false) earn: Int?,
+        @RequestParam(required = false) regionCode: String?,
+        @RequestParam(required = false) jobCode: String?,
+        @RequestParam(required = false) schoolCode: String?,
+        @RequestParam(required = false) marriageStatus: String?,
+        @RequestParam(required = false) keywords: MutableList<String?>?,
+        @RequestParam(defaultValue = "0") from: Int,
+        @RequestParam(defaultValue = "10") size: Int
+    ): MutableList<PolicyDocument?>? {
         // 1. PolicySearchCondition 객체 생성
-        PolicySearchCondition condition = PolicySearchCondition.builder()
-                .keyword(keyword)
-                .age(age)
-                .earn(earn)
-                .regionCode(regionCode)
-                .jobCode(jobCode)
-                .schoolCode(schoolCode)
-                .marriageStatus(marriageStatus)
-                .keywords(keywords)
-                .build();
+
+        val condition = PolicySearchCondition(
+            keyword = keyword,
+            age = age,
+            earn = earn,
+            regionCode = regionCode,
+            jobCode = jobCode,
+            schoolCode = schoolCode,
+            marriageStatus = marriageStatus,
+            keywords = keywords
+        )
 
         // 2. PolicyElasticSearchService의 search 메서드 호출
-        return policyElasticSearchService.search(condition, from, size);
+        return policyElasticSearchService!!.search(condition, from, size)
     }
 
     /**
@@ -66,24 +62,23 @@ public class PolicyElasticSearchServiceUsageExample {
      * GET /api/v1/welfare/policy/es/search-with-total?keyword=주거&age=30&from=0&size=20
      */
     @GetMapping("/search-with-total")
-    public PolicyElasticSearchService.SearchResult searchWithTotal(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer age,
-            @RequestParam(required = false) Integer earn,
-            @RequestParam(required = false) String regionCode,
-            @RequestParam(defaultValue = "0") int from,
-            @RequestParam(defaultValue = "10") int size)
-            throws IOException {
-
-        PolicySearchCondition condition = PolicySearchCondition.builder()
-                .keyword(keyword)
-                .age(age)
-                .earn(earn)
-                .regionCode(regionCode)
-                .build();
-
+    @Throws(IOException::class)
+    fun searchWithTotal(
+        @RequestParam(required = false) keyword: String?,
+        @RequestParam(required = false) age: Int?,
+        @RequestParam(required = false) earn: Int?,
+        @RequestParam(required = false) regionCode: String?,
+        @RequestParam(defaultValue = "0") from: Int,
+        @RequestParam(defaultValue = "10") size: Int
+    ): PolicyElasticSearchService.SearchResult? {
+        val condition = PolicySearchCondition(
+            keyword = keyword,
+            age = age,
+            earn = earn,
+            regionCode = regionCode
+        )
         // 총 개수와 함께 반환
-        return policyElasticSearchService.searchWithTotal(condition, from, size);
+        return policyElasticSearchService!!.searchWithTotal(condition, from, size)
     }
 
     /**
@@ -92,12 +87,12 @@ public class PolicyElasticSearchServiceUsageExample {
      * GET /api/v1/welfare/policy/es/search-keyword?keyword=청년&from=0&size=10
      */
     @GetMapping("/search-keyword")
-    public List<PolicyDocument> searchByKeyword(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int from,
-            @RequestParam(defaultValue = "10") int size)
-            throws IOException {
-
-        return policyElasticSearchService.searchByKeyword(keyword, from, size);
+    @Throws(IOException::class)
+    fun searchByKeyword(
+        @RequestParam(required = false) keyword: String?,
+        @RequestParam(defaultValue = "0") from: Int,
+        @RequestParam(defaultValue = "10") size: Int
+    ): MutableList<PolicyDocument?>? {
+        return policyElasticSearchService!!.searchByKeyword(keyword, from, size)
     }
 }
