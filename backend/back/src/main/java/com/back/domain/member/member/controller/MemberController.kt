@@ -9,6 +9,7 @@ import com.back.domain.member.member.dto.MeResponse
 import com.back.domain.member.member.service.MemberService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -20,7 +21,7 @@ class MemberController(
 
     // 회원가입
     @PostMapping("/join")
-    fun join(@RequestBody req: JoinRequest): ResponseEntity<JoinResponse> {
+    fun join(@Valid @RequestBody req: JoinRequest): ResponseEntity<JoinResponse> {
         val res = memberService.join(req)
         return ResponseEntity.ok(res)
     }
@@ -28,7 +29,7 @@ class MemberController(
     // 로그인
     @PostMapping("/login")
     fun login(
-        @RequestBody req: LoginRequest,
+        @Valid @RequestBody req: LoginRequest,
         response: HttpServletResponse
     ): ResponseEntity<LoginResponse> {
         val res = memberService.login(req, response)
@@ -48,7 +49,7 @@ class MemberController(
     }
 
     @PostMapping("/complete-social")
-    fun completeSocial(@RequestBody req: CompleteSocialSignupRequest): ResponseEntity<Void> {
+    fun completeSocial(@Valid @RequestBody req: CompleteSocialSignupRequest): ResponseEntity<Void> {
         memberService.completeSocialSignup(req)
         return ResponseEntity.ok().build()
     }
