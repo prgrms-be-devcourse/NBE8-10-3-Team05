@@ -5,12 +5,13 @@ import com.back.domain.welfare.policy.dto.PolicySearchResponseDto
 import com.back.domain.welfare.policy.dto.QPolicySearchResponseDto
 import com.back.domain.welfare.policy.entity.QPolicy.policy
 import com.querydsl.core.BooleanBuilder
+import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.stereotype.Repository
 
 @Repository
 class PolicyRepositoryImpl(
-    private val queryFactory: JPAQueryFactory
+    private val queryFactory: JPAQueryFactory //가끔 Could not autowire 뜨는데 무시해도 된다.IDE의 오탐(false positive)
 ) : PolicyRepositoryCustom {
 
     override fun search(condition: PolicySearchRequestDto): List<PolicySearchResponseDto> {
@@ -18,11 +19,11 @@ class PolicyRepositoryImpl(
         val builder = BooleanBuilder().apply {
 
             condition.sprtTrgtMinAge?.let {
-                and(policy.sprtTrgtMinAge.goe(it.toString()))
+                and(Expressions.numberTemplate(Integer::class.java, "CAST({0} AS INTEGER)", policy.sprtTrgtMinAge).goe(it))
             }
 
             condition.sprtTrgtMaxAge?.let {
-                and(policy.sprtTrgtMaxAge.loe(it.toString()))
+                and(Expressions.numberTemplate(Integer::class.java, "CAST({0} AS INTEGER)", policy.sprtTrgtMaxAge).loe(it))
             }
 
             condition.zipCd?.let {
@@ -38,11 +39,11 @@ class PolicyRepositoryImpl(
             }
 
             condition.earnMinAmt?.let {
-                and(policy.earnMinAmt.goe(it.toString()))
+                and(Expressions.numberTemplate(Integer::class.java, "CAST({0} AS INTEGER)", policy.earnMinAmt).goe(it))
             }
 
             condition.earnMaxAmt?.let {
-                and(policy.earnMaxAmt.loe(it.toString()))
+                and(Expressions.numberTemplate(Integer::class.java, "CAST({0} AS INTEGER)", policy.earnMaxAmt).loe(it))
             }
         }
 
