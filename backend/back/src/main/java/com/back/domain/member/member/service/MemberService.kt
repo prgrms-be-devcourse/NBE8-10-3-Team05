@@ -38,20 +38,6 @@ class MemberService(
 
     fun join(req: JoinRequest): JoinResponse {
 
-        // TODO: service단에서의 이중방어인가요?
-        //      controller에 @Valid 사용하면 더 좋을 듯 합니다.
-
-        // 요청값 검증
-        if (req.email == null || req.email.isBlank()) {
-            throw ServiceException("MEMBER_400", "이메일은 필수 입력값입니다")
-        }
-        if (req.password == null || req.password.isBlank()) {
-            throw ServiceException("MEMBER_400", "비밀번호는 필수 입력값입니다")
-        }
-        if (req.name == null || req.name.isBlank()) {
-            throw ServiceException("MEMBER_400", "이름은 필수 입력값입니다")
-        }
-
         // TODO: email 중복시 "[MEMBER_409] 이미 사용 중인 이메일입니다" 코드까지 사용자에게 보입니다.
 
         // 이메일 중복 체크
@@ -96,13 +82,6 @@ class MemberService(
 
     @Transactional
     fun login(req: LoginRequest, response: HttpServletResponse): LoginResponse {
-        // TODO: controller 단에서 @Valid 사용하면 더 좋을 듯 합니다.
-        if (req.email == null || req.email.isBlank()) {
-            throw ServiceException("AUTH-400", "email은 필수입니다.")
-        }
-        if (req.password == null || req.password.isBlank()) {
-            throw ServiceException("AUTH-400", "password는 필수입니다.")
-        }
 
         val member = memberRepository
             .findByEmail(req.email)
