@@ -1,0 +1,189 @@
+name: 무중단 배포
+
+on:
+  workflow_dispatch:
+    
+  push:
+    branches: [ main ]
+
+jobs:
+  # ── 1. WAS 서버 1 배포 ────────────────────────────────────
+  deploy-was1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nginx에서 WAS1 제거
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cat <<EOF > /home/ubuntu/app/nginx.conf
+            upstream was_group {
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+            }
+            server {
+                listen 80;
+                proxy_connect_timeout 5s;
+                proxy_read_timeout 60s;
+                location / {
+                    proxy_pass http://was_group;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+                }
+            }
+            EOF
+            docker exec nginx nginx -s reload
+
+      - name: WAS1 배포
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} "
+              docker pull gurum505/spring-next-app:v1.0 &&
+              docker stop app || true &&
+              docker rm app || true &&
+              docker run -d \
+                --name app \
+                -p 8080:8080 \
+                -e SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.DB_PRIVATE_IP }}:3306/my_db \
+                -e SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_PRIVATE_IP }} \
+                -e SPRING_ELASTICSEARCH_URIS=http://${{ secrets.ES_PRIVATE_IP }}:9200 \
+                gurum505/spring-next-app:v1.0
+            "
+
+      - name: WAS1 헬스체크
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://${{ secrets.NGINX_HOST }}/actuator/health)
+            if [ "$STATUS" == "200" ]; then
+              echo "✅ WAS1 정상 확인!"
+              exit 0
+            fi
+            echo "대기 중... ($i/10)"
+            sleep 10
+          done
+          echo "❌ WAS1 헬스체크 실패"
+          exit 1
+
+      - name: Nginx에 WAS1 복구
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cat <<EOF > /home/ubuntu/app/nginx.conf
+            upstream was_group {
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+            }
+            server {
+                listen 80;
+                proxy_connect_timeout 5s;
+                proxy_read_timeout 60s;
+                location / {
+                    proxy_pass http://was_group;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+                }
+            }
+            EOF
+            docker exec nginx nginx -s reload
+
+  # ── 2. WAS 서버 2 배포 ────────────────────────────────────
+  deploy-was2:
+    needs: deploy-was1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nginx에서 WAS2 제거
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cat <<EOF > /home/ubuntu/app/nginx.conf
+            upstream was_group {
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
+            }
+            server {
+                listen 80;
+                proxy_connect_timeout 5s;
+                proxy_read_timeout 60s;
+                location / {
+                    proxy_pass http://was_group;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+                }
+            }
+            EOF
+            docker exec nginx nginx -s reload
+
+      - name: WAS2 배포
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} "
+              docker pull gurum505/spring-next-app:v1.0 &&
+              docker stop app || true &&
+              docker rm app || true &&
+              docker run -d \
+                --name app \
+                -p 8080:8080 \
+                -e SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.DB_PRIVATE_IP }}:3306/my_db \
+                -e SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_PRIVATE_IP }} \
+                -e SPRING_ELASTICSEARCH_URIS=http://${{ secrets.ES_PRIVATE_IP }}:9200 \
+                gurum505/spring-next-app:v1.0
+            "
+
+      - name: WAS2 헬스체크
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://${{ secrets.NGINX_HOST }}/actuator/health)
+            if [ "$STATUS" == "200" ]; then
+              echo "✅ WAS2 정상 확인!"
+              exit 0
+            fi
+            echo "대기 중... ($i/10)"
+            sleep 10
+          done
+          echo "❌ WAS2 헬스체크 실패"
+          exit 1
+
+      - name: Nginx에 WAS2 복구
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cat <<EOF > /home/ubuntu/app/nginx.conf
+            upstream was_group {
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+            }
+            server {
+                listen 80;
+                proxy_connect_timeout 5s;
+                proxy_read_timeout 60s;
+                location / {
+                    proxy_pass http://was_group;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+                }
+            }
+            EOF
+            docker exec nginx nginx -s reload
