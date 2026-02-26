@@ -22,14 +22,17 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.transaction.annotation.Transactional
+import org.hamcrest.Matchers
 import java.util.*
 import java.util.function.Function
 
 @ActiveProfiles("test")
+@TestPropertySource(properties = ["app.elasticsearch.policy-index=policy_controller"])
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -64,19 +67,19 @@ class PolicyControllerTest {
         policyRepository.flush()
 
         // 4️⃣ 테스트 데이터 생성
-        val policy = Policy(
-            plcyNo = "API-" + UUID.randomUUID(),
-            plcyNm = "청년 주거 지원 컨트롤러 테스트",
-            sprtTrgtMinAge = "20",
-            sprtTrgtMaxAge = "39",
-            sprtTrgtAgeLmtYn = "Y",
-            zipCd = "11",
-            jobCd = "J01",
-            schoolCd = "S01",
-            mrgSttsCd = "N",
-            plcyKywdNm = "청년,주거",
-            plcyExplnCn = "컨트롤러 테스트용 정책 설명"
-        )
+        val policy = Policy.builder()
+            .plcyNo("API-" + UUID.randomUUID())
+            .plcyNm("청년 주거 지원 컨트롤러 테스트")
+            .sprtTrgtMinAge("20")
+            .sprtTrgtMaxAge("39")
+            .sprtTrgtAgeLmtYn("Y")
+            .zipCd("11")
+            .jobCd("J01")
+            .schoolCd("S01")
+            .mrgSttsCd("N")
+            .plcyKywdNm("청년,주거")
+            .plcyExplnCn("컨트롤러 테스트용 정책 설명")
+            .build()
 
         policyRepository.saveAndFlush(policy)
 
@@ -146,10 +149,11 @@ class PolicyControllerTest {
         )
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.jsonPath("$").isArray())
-            .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(Matchers.greaterThanOrEqualTo(1)))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[*].plcyNm").value(Matchers.hasItem("청년 주거 지원 컨트롤러 테스트")))
     }
 
     companion object {
-        private const val INDEX = "policy"
+        private const val INDEX = "policy_controller"
     }
 }

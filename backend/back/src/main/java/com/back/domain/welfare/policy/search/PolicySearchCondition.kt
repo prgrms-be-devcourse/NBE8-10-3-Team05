@@ -1,6 +1,6 @@
 package com.back.domain.welfare.policy.search
 
-class PolicySearchCondition(
+data class PolicySearchCondition(
     val keyword: String? = null,
     val age: Int? = null,
     val earn: Int? = null,

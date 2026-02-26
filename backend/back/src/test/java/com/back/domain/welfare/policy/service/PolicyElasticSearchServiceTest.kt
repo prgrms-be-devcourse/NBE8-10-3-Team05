@@ -3,7 +3,6 @@ package com.back.domain.welfare.policy.service
 import co.elastic.clients.elasticsearch.ElasticsearchClient
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchAllQuery
 import co.elastic.clients.elasticsearch._types.query_dsl.Query
-import co.elastic.clients.elasticsearch.core.SearchRequest
 import co.elastic.clients.elasticsearch.core.SearchResponse
 import co.elastic.clients.elasticsearch.core.search.Hit
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata
@@ -21,8 +20,6 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers
-import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
@@ -35,7 +32,6 @@ import java.util.function.Function
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("PolicyElasticSearchService 단위 테스트")
 internal class PolicyElasticSearchServiceTest {
-
     @Mock
     private val esClient: ElasticsearchClient? = null
 
@@ -51,48 +47,58 @@ internal class PolicyElasticSearchServiceTest {
     @Mock
     private val indicesClient: ElasticsearchIndicesClient? = null
 
-    @InjectMocks
-    private val sut: PolicyElasticSearchService? = null
+    private var sut: PolicyElasticSearchService? = null
+
+    @Mock
+    private val booleanResponse: co.elastic.clients.transport.endpoints.BooleanResponse? = null
 
     @BeforeEach
     fun setUp() {
+        sut = PolicyElasticSearchService(
+            esClient!!,
+            policyRepository!!,
+            policyDocumentMapper!!,
+            policyQueryBuilder!!,
+            "policy"
+        )
         Mockito.lenient().`when`(esClient!!.indices()).thenReturn(indicesClient)
+
+        // exists() 가 null 반환하지 않도록 stub 추가
+        Mockito.lenient().`when`(
+            indicesClient!!.exists(anyNonNull<co.elastic.clients.elasticsearch.indices.ExistsRequest>())
+        ).thenReturn(booleanResponse)
+
+        // 인덱스가 존재한다고 설정
+        Mockito.lenient().`when`(booleanResponse!!.value()).thenReturn(true)
     }
 
     @Nested
     @DisplayName("search(condition, from, size)")
     internal inner class Search {
-
         @Test
         @DisplayName("PolicyQueryBuilder.build 호출 후, search 결과 문서 반환")
         @Throws(IOException::class)
-        @Suppress("UNCHECKED_CAST")
         fun usesQueryBuilder_returnsDocuments() {
-            // val이므로 생성자 named parameter로 전달
             val condition = PolicySearchCondition(keyword = "주거")
-
-            val query = Query.of(Function { q: Query.Builder? ->
-                q!!.matchAll(Function { m: MatchAllQuery.Builder? -> m })
-            })
+            val query =
+                Query.of(Function { q: Query.Builder? -> q!!.matchAll(Function { m: MatchAllQuery.Builder? -> m }) })
             Mockito.`when`(policyQueryBuilder!!.build(condition)).thenReturn(query)
 
-            val doc = PolicyDocument().apply { plcyNm = "주거" }
-            val mockResp: SearchResponse<PolicyDocument?> = buildSearchResponse(mutableListOf(doc), 1L)
-
-            // search() 시그니처: (Function<Builder, ObjectBuilder<SearchRequest>>, Class<T>) → 명시적 캐스트
-            Mockito.doReturn(mockResp).`when`(esClient!!).search(
-                ArgumentMatchers.any() as Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>>?,
-                ArgumentMatchers.any() as Class<PolicyDocument?>?
+            val doc = PolicyDocument(policyId = 2, plcyNm = "주거")
+            val mockResp = buildSearchResponse(mutableListOf(doc), 1L)
+            Mockito.doReturn(mockResp).`when`(esClient)?.search(
+                anyNonNull<Function<co.elastic.clients.elasticsearch.core.SearchRequest.Builder, ObjectBuilder<co.elastic.clients.elasticsearch.core.SearchRequest>>>(),
+                anyNonNull<Class<PolicyDocument>>()
             )
 
-            val result = sut!!.search(condition, 0, 10).toMutableList()
+            val result = sut!!.search(condition, 0, 10)
 
             Assertions.assertThat(result).hasSize(1)
-            Assertions.assertThat(result[0]!!.plcyNm).isEqualTo("주거")
+            Assertions.assertThat(result!![0]!!.plcyNm).isEqualTo("주거")
             Mockito.verify(policyQueryBuilder).build(condition)
-            Mockito.verify(esClient).search(
-                ArgumentMatchers.any() as Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>>?,
-                ArgumentMatchers.any() as Class<PolicyDocument?>?
+            Mockito.verify(esClient)?.search(
+                anyNonNull<Function<co.elastic.clients.elasticsearch.core.SearchRequest.Builder, ObjectBuilder<co.elastic.clients.elasticsearch.core.SearchRequest>>>(),
+                anyNonNull<Class<PolicyDocument>>()
             )
         }
     }
@@ -100,25 +106,20 @@ internal class PolicyElasticSearchServiceTest {
     @Nested
     @DisplayName("searchWithTotal")
     internal inner class SearchWithTotal {
-
         @Test
         @DisplayName("문서 목록과 total 반환")
         @Throws(IOException::class)
-        @Suppress("UNCHECKED_CAST")
         fun returnsDocumentsAndTotal() {
             val condition = PolicySearchCondition(keyword = "청년")
-
-            val query = Query.of(Function { q: Query.Builder? ->
-                q!!.matchAll(Function { m: MatchAllQuery.Builder? -> m })
-            })
+            val query =
+                Query.of(Function { q: Query.Builder? -> q!!.matchAll(Function { m: MatchAllQuery.Builder? -> m }) })
             Mockito.`when`(policyQueryBuilder!!.build(condition)).thenReturn(query)
 
-            val doc = PolicyDocument().apply { plcyNm = "청년" }
-            val mockResp: SearchResponse<PolicyDocument?> = buildSearchResponse(mutableListOf(doc), 100L)
-
-            Mockito.doReturn(mockResp).`when`(esClient!!).search(
-                ArgumentMatchers.any() as Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>>?,
-                ArgumentMatchers.any() as Class<PolicyDocument?>?
+            val doc = PolicyDocument(policyId = 1, plcyNm = "청년")
+            val mockResp = buildSearchResponse(mutableListOf(doc), 100L)
+            Mockito.doReturn(mockResp).`when`(esClient)?.search(
+                anyNonNull<Function<co.elastic.clients.elasticsearch.core.SearchRequest.Builder, ObjectBuilder<co.elastic.clients.elasticsearch.core.SearchRequest>>>(),
+                anyNonNull<Class<PolicyDocument>>()
             )
 
             val result = sut!!.searchWithTotal(condition, 0, 10)
@@ -126,9 +127,9 @@ internal class PolicyElasticSearchServiceTest {
             Assertions.assertThat(result.documents).hasSize(1)
             Assertions.assertThat(result.total).isEqualTo(100L)
             Mockito.verify(policyQueryBuilder).build(condition)
-            Mockito.verify(esClient).search(
-                ArgumentMatchers.any() as Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>>?,
-                ArgumentMatchers.any() as Class<PolicyDocument?>?
+            Mockito.verify(esClient)?.search(
+                anyNonNull<Function<co.elastic.clients.elasticsearch.core.SearchRequest.Builder, ObjectBuilder<co.elastic.clients.elasticsearch.core.SearchRequest>>>(),
+                anyNonNull<Class<PolicyDocument>>()
             )
         }
     }
@@ -136,11 +137,10 @@ internal class PolicyElasticSearchServiceTest {
     @Nested
     @DisplayName("SearchResult")
     internal inner class SearchResultTest {
-
         @Test
-        @DisplayName("getDocuments / getTotal 동작")
+        @DisplayName("documents / total 동작")
         fun getters() {
-            val doc = PolicyDocument().apply { plcyNm = "a" }
+            val doc = PolicyDocument(policyId = 1, plcyNm = "a")
             val result = PolicyElasticSearchService.SearchResult(listOf(doc), 50L)
 
             Assertions.assertThat(result.documents).containsExactly(doc)
@@ -149,14 +149,21 @@ internal class PolicyElasticSearchServiceTest {
     }
 
     companion object {
+        /**
+         * Kotlin + Mockito 에서 non-nullable 타입 파라미터가 필요한 메서드에
+         * any() 매처를 전달할 때 발생하는 NPE/타입 불일치를 해결하는 helper.
+         * (mockito-kotlin 라이브러리의 any() 구현 방식과 동일)
+         */
+        @Suppress("UNCHECKED_CAST")
+        private fun <T> anyNonNull(): T = Mockito.any<T>() ?: null as T
 
         @Suppress("UNCHECKED_CAST")
         private fun buildSearchResponse(
             documents: MutableList<PolicyDocument?>,
             total: Long
-        ): SearchResponse<PolicyDocument?> {
+        ): SearchResponse<PolicyDocument> {
             val hits = documents.map { d ->
-                val h = Mockito.mock(Hit::class.java) as Hit<PolicyDocument?>
+                val h = Mockito.mock(Hit::class.java) as Hit<PolicyDocument>
                 Mockito.`when`(h.source()).thenReturn(d)
                 h
             }.toMutableList()
@@ -164,11 +171,11 @@ internal class PolicyElasticSearchServiceTest {
             val totalHits = Mockito.mock(TotalHits::class.java)
             Mockito.`when`(totalHits.value()).thenReturn(total)
 
-            val meta = Mockito.mock(HitsMetadata::class.java) as HitsMetadata<PolicyDocument?>
+            val meta = Mockito.mock(HitsMetadata::class.java) as HitsMetadata<PolicyDocument>
             Mockito.`when`(meta.hits()).thenReturn(hits)
             Mockito.`when`(meta.total()).thenReturn(totalHits)
 
-            val resp = Mockito.mock(SearchResponse::class.java) as SearchResponse<PolicyDocument?>
+            val resp = Mockito.mock(SearchResponse::class.java) as SearchResponse<PolicyDocument>
             Mockito.`when`(resp.hits()).thenReturn(meta)
 
             return resp

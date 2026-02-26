@@ -1,15 +1,16 @@
 package com.back.domain.welfare.policy.search
 
 import co.elastic.clients.elasticsearch._types.query_dsl.Query
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 @DisplayName("PolicyQueryBuilder 단위 테스트")
-internal class PolicyQueryBuilderTest {
-    private var policyQueryBuilder: PolicyQueryBuilder? = null
+class PolicyQueryBuilderTest {
+
+    private lateinit var policyQueryBuilder: PolicyQueryBuilder
 
     @BeforeEach
     fun setUp() {
@@ -18,17 +19,17 @@ internal class PolicyQueryBuilderTest {
 
     @Nested
     @DisplayName("build(PolicySearchCondition)")
-    internal inner class Build {
+    inner class Build {
 
         @Test
         @DisplayName("조건 없음(전부 null) → Query 생성, 예외 없음")
         fun emptyCondition() {
             val condition = PolicySearchCondition()
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
 
         @Test
@@ -36,10 +37,10 @@ internal class PolicyQueryBuilderTest {
         fun keywordOnly() {
             val condition = PolicySearchCondition(keyword = "청년 주거")
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
 
         @Test
@@ -47,10 +48,10 @@ internal class PolicyQueryBuilderTest {
         fun ageOnly() {
             val condition = PolicySearchCondition(age = 25)
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
 
         @Test
@@ -58,10 +59,10 @@ internal class PolicyQueryBuilderTest {
         fun earnOnly() {
             val condition = PolicySearchCondition(earn = 3000)
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
 
         @Test
@@ -74,10 +75,10 @@ internal class PolicyQueryBuilderTest {
                 marriageStatus = "Y"
             )
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
 
         @Test
@@ -85,10 +86,10 @@ internal class PolicyQueryBuilderTest {
         fun keywordsList() {
             val condition = PolicySearchCondition(keywords = listOf("청년", "주거"))
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
 
         @Test
@@ -105,10 +106,10 @@ internal class PolicyQueryBuilderTest {
                 keywords = listOf("취업")
             )
 
-            val query = policyQueryBuilder!!.build(condition)
+            val query: Query = policyQueryBuilder.build(condition)
 
-            Assertions.assertThat(query).isNotNull()
-            Assertions.assertThat(query!!.isBool()).isTrue()
+            assertThat(query).isNotNull()
+            assertThat(query.isBool).isTrue()
         }
     }
 }

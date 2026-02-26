@@ -6,7 +6,9 @@ import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest
 import co.elastic.clients.elasticsearch.indices.ExistsRequest
 import co.elastic.clients.elasticsearch.indices.RefreshRequest
 import com.back.domain.welfare.policy.dto.PolicySearchRequestDto
+import com.back.domain.welfare.policy.dto.PolicySearchResponseDto
 import com.back.domain.welfare.policy.entity.Policy
+import com.back.domain.welfare.policy.entity.Policy.Companion.builder
 import com.back.domain.welfare.policy.repository.PolicyRepository
 import com.back.domain.welfare.policy.search.PolicySearchCondition
 import org.junit.jupiter.api.*
@@ -43,12 +45,12 @@ import java.util.function.Function
         "logging.level.org.springframework=WARN",
         "logging.level.org.hibernate=WARN",
         "logging.level.org.hibernate.orm.jdbc=OFF",
-        "logging.level.org.elasticsearch=WARN"
+        "logging.level.org.elasticsearch=WARN",
+        "app.elasticsearch.policy-index=policy_performance"
     ]
 )
 @DisplayName("Policy 검색 성능 비교 테스트 (DB vs ElasticSearch)")
 internal class PolicyPerformanceComparisonTest {
-
     @Autowired
     private val policyService: PolicyService? = null
 
@@ -65,7 +67,8 @@ internal class PolicyPerformanceComparisonTest {
     private var testDataCount = 0
 
     @BeforeEach
-    @Transactional
+    // @Transactional 제거: 트랜잭션이 커밋되기 전에 reindexAllFromDb()가 실행되면
+    // DB 데이터를 읽지 못해 인덱스가 비거나 인덱스 자체가 생성되지 않는 문제 발생
     @Throws(Exception::class)
     fun setUp() {
         println("\n========== 성능 테스트 시작 ==========")
@@ -83,18 +86,19 @@ internal class PolicyPerformanceComparisonTest {
             return
         }
 
+        // 이번 테스트에서 사용하는 인덱스만 정리
         println("🧹 전체 인덱스 정리")
         try {
             val response = elasticsearchClient.cat().indices()
             for (index in response.valueBody()) {
                 val indexName = index.index()
-                if (indexName != null && indexName.startsWith("policy")) {
+                if (indexName != null && indexName == INDEX) {
                     try {
                         elasticsearchClient.indices()
                             .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
                                 d!!.index(indexName)
                             }))
-                        println("  - 삭제: $indexName")
+                        println("  - 삭제: " + indexName)
                     } catch (e: Exception) {
                         // 무시
                     }
@@ -105,18 +109,22 @@ internal class PolicyPerformanceComparisonTest {
             println("  - 인덱스 정리 실패 (무시): " + e.message)
         }
 
+        // DB 데이터 정리
         println("🧹 DB 정리")
         policyRepository!!.deleteAll()
         policyRepository.flush()
 
+        // 테스트 데이터 생성 (별도 트랜잭션으로 커밋 보장)
         testDataCount = System.getProperty("test.data.count", "100").toInt()
-        println("📝 테스트 데이터 생성: ${testDataCount}건")
+        println("📝 테스트 데이터 생성: " + testDataCount + "건")
         createTestData(testDataCount)
 
+        // 인덱스 생성
         println("📝 인덱스 생성")
         policyElasticSearchService!!.ensureIndex()
         waitForIndexCreation()
 
+        // ES 인덱싱 (DB 커밋 완료 후 실행됨)
         println("📝 Elasticsearch 인덱싱")
         policyElasticSearchService.reindexAllFromDb()
         waitForIndexing(testDataCount.toLong())
@@ -133,7 +141,7 @@ internal class PolicyPerformanceComparisonTest {
             val response = elasticsearchClient!!.cat().indices()
             for (index in response.valueBody()) {
                 val indexName = index.index()
-                if (indexName != null && indexName.startsWith("policy")) {
+                if (indexName != null && indexName == INDEX) {
                     try {
                         elasticsearchClient.indices()
                             .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
@@ -155,8 +163,7 @@ internal class PolicyPerformanceComparisonTest {
         for (i in 0..29) {
             try {
                 if (elasticsearchClient!!.indices()
-                        .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
-                        .value()
+                        .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) }).value()
                 ) {
                     println("  - 인덱스 생성 확인")
                     Thread.sleep(500)
@@ -172,7 +179,7 @@ internal class PolicyPerformanceComparisonTest {
 
     @Throws(Exception::class)
     private fun waitForIndexing(expectedCount: Long) {
-        println("  - 인덱싱 대기: ${expectedCount}건")
+        println("  - 인덱싱 대기: " + expectedCount + "건")
 
         elasticsearchClient!!.indices().refresh(Function { r: RefreshRequest.Builder? -> r!!.index(INDEX) })
 
@@ -184,12 +191,12 @@ internal class PolicyPerformanceComparisonTest {
                     .count()
 
                 if (count != lastCount && attempt % 10 == 0) {
-                    println("    현재: $count / $expectedCount")
+                    println("    현재: " + count + " / " + expectedCount)
                     lastCount = count
                 }
 
                 if (count >= expectedCount) {
-                    println("  - 인덱싱 완료: ${count}건")
+                    println("  - 인덱싱 완료: " + count + "건")
                     Thread.sleep(1000)
                     return
                 }
@@ -204,7 +211,7 @@ internal class PolicyPerformanceComparisonTest {
             Thread.sleep(WAIT_INTERVAL_MS)
         }
 
-        throw AssertionError("❌ 인덱싱 타임아웃: ${expectedCount}건 대기 실패")
+        throw AssertionError("❌ 인덱싱 타임아웃: " + expectedCount + "건 대기 실패")
     }
 
     @Test
@@ -215,11 +222,14 @@ internal class PolicyPerformanceComparisonTest {
         val dbRequest = PolicySearchRequestDto(25, 35, null, null, null, null, null)
         val esCondition = PolicySearchCondition(age = 30)
 
-        val dbResult = measurePerformance(Supplier { policyService!!.search(dbRequest) })
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
         printComparisonResult("나이 조건 검색", dbResult, esResult)
     }
@@ -232,11 +242,14 @@ internal class PolicyPerformanceComparisonTest {
         val dbRequest = PolicySearchRequestDto(null, null, null, null, null, 2000, 4000)
         val esCondition = PolicySearchCondition(earn = 3000)
 
-        val dbResult = measurePerformance(Supplier { policyService!!.search(dbRequest) })
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
         printComparisonResult("소득 조건 검색", dbResult, esResult)
     }
@@ -249,11 +262,14 @@ internal class PolicyPerformanceComparisonTest {
         val dbRequest = PolicySearchRequestDto(null, null, "11", null, null, null, null)
         val esCondition = PolicySearchCondition(regionCode = "11")
 
-        val dbResult = measurePerformance(Supplier { policyService!!.search(dbRequest) })
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
         printComparisonResult("지역 코드 검색", dbResult, esResult)
     }
@@ -265,17 +281,20 @@ internal class PolicyPerformanceComparisonTest {
 
         val esCondition = PolicySearchCondition(keyword = "청년")
 
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
         println("=".repeat(80))
         println("키워드 검색 (ES 전용 기능)")
-        println("  결과 수: ${esResult.resultCount}")
-        println("  평균 응답 시간: ${esResult.averageTime}ms")
-        println("  중간값: ${esResult.medianTime}ms")
-        println("  최소/최대: ${esResult.minTime}/${esResult.maxTime}ms")
+        println("  결과 수: " + esResult.resultCount)
+        println("  평균 응답 시간: " + esResult.averageTime + "ms")
+        println("  중간값: " + esResult.medianTime + "ms")
+        println("  최소/최대: " + esResult.minTime + "/" + esResult.maxTime + "ms")
         println("=".repeat(80))
     }
 
@@ -287,11 +306,14 @@ internal class PolicyPerformanceComparisonTest {
         val dbRequest = PolicySearchRequestDto(20, 39, "11", null, null, 0, 5000)
         val esCondition = PolicySearchCondition(age = 25, regionCode = "11", earn = 3000)
 
-        val dbResult = measurePerformance(Supplier { policyService!!.search(dbRequest) })
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
         printComparisonResult("복합 조건 검색", dbResult, esResult)
     }
@@ -304,11 +326,14 @@ internal class PolicyPerformanceComparisonTest {
         val dbRequest = PolicySearchRequestDto(null, null, null, null, null, null, null)
         val esCondition = PolicySearchCondition()
 
-        val dbResult = measurePerformance(Supplier { policyService!!.search(dbRequest) })
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val dbResult = measureDbPerformance { policyService!!.search(dbRequest) }
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
         printComparisonResult("전체 검색", dbResult, esResult)
     }
@@ -320,69 +345,99 @@ internal class PolicyPerformanceComparisonTest {
 
         println("=".repeat(80))
         println("데이터 양에 따른 성능 테스트")
-        println("현재 데이터: ${testDataCount}건")
+        println("현재 데이터: " + testDataCount + "건")
         println("더 많은 데이터로 테스트하려면: -Dtest.data.count=1000")
         println("=".repeat(80))
 
         val esCondition = PolicySearchCondition(age = 30)
 
-        val esResult = measurePerformance(Supplier {
-            try { policyElasticSearchService!!.search(esCondition, 0, 100) }
-            catch (e: IOException) { throw RuntimeException(e) }
-        })
+        val esResult = measureEsPerformance {
+            try {
+                policyElasticSearchService!!.search(esCondition, 0, 100)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        }
 
-        println("ES 검색 성능 (${testDataCount}건)")
-        println("  평균: ${esResult.averageTime}ms")
-        println("  중간값: ${esResult.medianTime}ms")
+        println("ES 검색 성능 (" + testDataCount + "건)")
+        println("  평균: " + esResult.averageTime + "ms")
+        println("  중간값: " + esResult.medianTime + "ms")
     }
 
     // ========== Helper Methods ==========
 
-    private fun createTestData(count: Int) {
+    // @Transactional: createTestData 내 DB 저장이 이 메서드 종료 시 커밋됨
+    // → setUp()에서 트랜잭션 없이 호출하면 saveAll/flush 후 즉시 커밋 보장
+    @Transactional
+    fun createTestData(count: Int) {
         val policies = mutableListOf<Policy>()
 
         for (i in 0..<count) {
             val uniqueId = UUID.randomUUID().toString().substring(0, 8)
-            val minAge = if (i % 10 == 0) 25 else 20 + (i % 50)
-            val maxAge = if (i % 10 == 0) 35 else 40 + (i % 30)
 
-            policies.add(
-                Policy(
-                    plcyNo = "PERF-$i-$uniqueId",
-                    plcyNm = "정책 $i",
-                    sprtTrgtMinAge = minAge.toString(),
-                    sprtTrgtMaxAge = maxAge.toString(),
-                    sprtTrgtAgeLmtYn = "Y",
-                    earnCndSeCd = "연소득",
-                    earnMinAmt = ((i % 10) * 1000).toString(),
-                    earnMaxAmt = ((i % 10 + 1) * 1000).toString(),
-                    zipCd = (11 + (i % 17)).toString(),
-                    jobCd = "J${String.format("%02d", i % 10)}",
-                    schoolCd = "S${String.format("%02d", i % 5)}",
-                    mrgSttsCd = if (i % 2 == 0) "Y" else "N",
-                    plcyKywdNm = "${if (i % 2 == 0) "청년" else "중장년"},지원",
-                    plcyExplnCn = "정책 설명 $i"
-                )
-            )
+            val minAge: Int
+            val maxAge: Int
+            if (i % 10 == 0) {
+                minAge = 25
+                maxAge = 35
+            } else {
+                minAge = 20 + (i % 50)
+                maxAge = 40 + (i % 30)
+            }
+
+            val policy = Policy.builder()
+                .plcyNo("PERF-" + i + "-" + uniqueId)
+                .plcyNm("정책 " + i)
+                .sprtTrgtMinAge(minAge.toString())
+                .sprtTrgtMaxAge(maxAge.toString())
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("연소득")
+                .earnMinAmt(((i % 10) * 1000).toString())
+                .earnMaxAmt(((i % 10 + 1) * 1000).toString())
+                .zipCd((11 + (i % 17)).toString())
+                .jobCd("J" + String.format("%02d", i % 10))
+                .schoolCd("S" + String.format("%02d", i % 5))
+                .mrgSttsCd(if (i % 2 == 0) "Y" else "N")
+                .plcyKywdNm((if (i % 2 == 0) "청년" else "중장년") + ",지원")
+                .plcyExplnCn("정책 설명 " + i)
+                .build()
+
+            policies.add(policy)
         }
 
         policyRepository!!.saveAll(policies)
         policyRepository.flush()
     }
 
-    private fun measurePerformance(supplier: Supplier<*>): PerformanceResult {
-        repeat(WARMUP_ITERATIONS) { supplier.get() }
+    private fun measureDbPerformance(block: () -> List<PolicySearchResponseDto?>?): PerformanceResult {
+        repeat(WARMUP_ITERATIONS) { block() }
 
         val times = mutableListOf<Long>()
         var resultCount = 0
 
-        for (i in 0..<TEST_ITERATIONS) {
+        repeat(TEST_ITERATIONS) { i ->
             val start = System.nanoTime()
-            val results = supplier.get()
+            val results = block()
             val end = System.nanoTime()
-
             times.add(TimeUnit.NANOSECONDS.toMillis(end - start))
-            if (i == 0 && results is MutableList<*>) resultCount = results.size
+            if (i == 0) resultCount = results?.size ?: 0
+        }
+
+        return PerformanceResult(times, resultCount)
+    }
+
+    private fun measureEsPerformance(block: () -> Any?): PerformanceResult {
+        repeat(WARMUP_ITERATIONS) { block() }
+
+        val times = mutableListOf<Long>()
+        var resultCount = 0
+
+        repeat(TEST_ITERATIONS) { i ->
+            val start = System.nanoTime()
+            val results = block()
+            val end = System.nanoTime()
+            times.add(TimeUnit.NANOSECONDS.toMillis(end - start))
+            if (i == 0 && results is List<*>) resultCount = results.size
         }
 
         return PerformanceResult(times, resultCount)
@@ -393,37 +448,43 @@ internal class PolicyPerformanceComparisonTest {
         println(testName)
         println("-".repeat(80))
         println("DB 검색:")
-        println("  결과 수: ${dbResult.resultCount}")
-        println("  평균: ${dbResult.averageTime}ms")
-        println("  중간값: ${dbResult.medianTime}ms")
-        println("  최소/최대: ${dbResult.minTime}/${dbResult.maxTime}ms")
+        println("  결과 수: " + dbResult.resultCount)
+        println("  평균: " + dbResult.averageTime + "ms")
+        println("  중간값: " + dbResult.medianTime + "ms")
+        println("  최소/최대: " + dbResult.minTime + "/" + dbResult.maxTime + "ms")
         println()
         println("ES 검색:")
-        println("  결과 수: ${esResult.resultCount}")
-        println("  평균: ${esResult.averageTime}ms")
-        println("  중간값: ${esResult.medianTime}ms")
-        println("  최소/최대: ${esResult.minTime}/${esResult.maxTime}ms")
+        println("  결과 수: " + esResult.resultCount)
+        println("  평균: " + esResult.averageTime + "ms")
+        println("  중간값: " + esResult.medianTime + "ms")
+        println("  최소/최대: " + esResult.minTime + "/" + esResult.maxTime + "ms")
         println()
+
         val improvement = ((dbResult.averageTime - esResult.averageTime).toDouble() / dbResult.averageTime) * 100
-        println("성능 차이: ${String.format("%.2f%%", improvement)}${if (improvement > 0) " (ES가 빠름)" else " (DB가 빠름)"}")
+        println(
+            "성능 차이: " + String.format("%.2f%%", improvement) + (if (improvement > 0) " (ES가 빠름)" else " (DB가 빠름)")
+        )
         println("=".repeat(80))
     }
 
-    private fun interface Supplier<T> {
-        fun get(): T?
-    }
+    private class PerformanceResult(times: List<Long>, val resultCount: Int) {
+        private val times: List<Long> = times.sortedWith(compareBy { it })
 
-    private class PerformanceResult(times: MutableList<Long>, val resultCount: Int) {
-        private val times: MutableList<Long> = times.sorted().toMutableList()
+        val averageTime: Long
+            get() = times.average().toLong()
 
-        val averageTime: Long get() = times.average().toLong()
-        val medianTime: Long get() = times[times.size / 2]
-        val minTime: Long get() = times[0]
-        val maxTime: Long get() = times[times.size - 1]
+        val medianTime: Long
+            get() = times[times.size / 2]
+
+        val minTime: Long
+            get() = times.first()
+
+        val maxTime: Long
+            get() = times.last()
     }
 
     companion object {
-        private const val INDEX = "policy"
+        private const val INDEX = "policy_performance"
         private const val WARMUP_ITERATIONS = 3
         private const val TEST_ITERATIONS = 10
         private const val MAX_WAIT_ATTEMPTS = 60

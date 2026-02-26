@@ -32,15 +32,11 @@ import java.util.function.Function
 @Order(1)
 @DisplayName("PolicyElasticSearchService 통합 테스트")
 internal class PolicyElasticSearchServiceIntegrationTest {
-
     @Autowired
     private val policyElasticSearchService: PolicyElasticSearchService? = null
 
     @Autowired
     private val policyRepository: PolicyRepository? = null
-
-    @Autowired
-    var policyDocumentMapper: PolicyDocumentMapper? = null
 
     @Autowired
     private val elasticsearchClient: ElasticsearchClient? = null
@@ -69,20 +65,20 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             var deletedCount = 0
             for (index in response.valueBody()) {
                 val indexName = index.index()
-                if (indexName != null && indexName.startsWith("policy")) {
+                if (indexName != null && indexName == INDEX) {
                     try {
                         elasticsearchClient.indices()
                             .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
                                 d!!.index(indexName)
                             }))
                         deletedCount++
-                        println("  - 삭제: $indexName")
+                        println("  - 삭제: " + indexName)
                     } catch (e: Exception) {
-                        println("  - 삭제 실패 (무시): $indexName")
+                        println("  - 삭제 실패 (무시): " + indexName)
                     }
                 }
             }
-            println("  - 총 ${deletedCount}개 인덱스 삭제")
+            println("  - 총 " + deletedCount + "개 인덱스 삭제")
 
             if (deletedCount > 0) {
                 Thread.sleep(2000)
@@ -104,31 +100,20 @@ internal class PolicyElasticSearchServiceIntegrationTest {
         if (!elasticsearchAvailable) return
 
         try {
-            val response = elasticsearchClient!!.cat().indices()
-            response.valueBody().forEach(Consumer { index: IndicesRecord? ->
-                val indexName = index!!.index()
-                if (indexName != null && indexName.startsWith("policy")) {
-                    try {
-                        elasticsearchClient.indices()
-                            .delete(DeleteIndexRequest.of(Function { d: DeleteIndexRequest.Builder? ->
-                                d!!.index(indexName)
-                            }))
-                    } catch (e: Exception) {
-                        // 무시
-                    }
-                }
-            })
-            Thread.sleep(500)
+            val exists = elasticsearchClient!!.indices()
+                .exists { it.index(INDEX) }
+                .value()
+            if (exists) {
+                elasticsearchClient.indices().delete { it.index(INDEX) }
+            }
         } catch (e: Exception) {
             // 무시
         }
     }
-
     @Throws(Exception::class)
     private fun cleanupElasticsearch() {
         try {
-            if (elasticsearchClient!!.indices()
-                    .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
+            if (elasticsearchClient!!.indices().exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
                     .value()
             ) {
                 elasticsearchClient.indices()
@@ -138,10 +123,13 @@ internal class PolicyElasticSearchServiceIntegrationTest {
 
                 for (i in 0..19) {
                     try {
-                        if (!elasticsearchClient.indices()
+                        if (!elasticsearchClient
+                                .indices()
                                 .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
                                 .value()
-                        ) break
+                        ) {
+                            break
+                        }
                     } catch (e: Exception) {
                         break
                     }
@@ -155,7 +143,7 @@ internal class PolicyElasticSearchServiceIntegrationTest {
 
     @Throws(Exception::class)
     private fun waitForIndexing(expectedCount: Long) {
-        println("🔍 인덱싱 대기 시작: 예상 문서 수 = $expectedCount")
+        println("🔍 인덱싱 대기 시작: 예상 문서 수 = " + expectedCount)
 
         elasticsearchClient!!.indices().refresh(Function { r: RefreshRequest.Builder? -> r!!.index(INDEX) })
 
@@ -169,10 +157,11 @@ internal class PolicyElasticSearchServiceIntegrationTest {
                 lastCount = count
 
                 if (count >= expectedCount) {
-                    val searchResponse = elasticsearchClient.search(
+                    val searchResponse = elasticsearchClient.search<PolicyDocument?>(
                         Function { s: SearchRequest.Builder? ->
                             s!!.index(INDEX).query(Function { q: Query.Builder? ->
-                                q!!.matchAll(Function { m: MatchAllQuery.Builder? -> m })
+                                q!!.matchAll(
+                                    Function { m: MatchAllQuery.Builder? -> m })
                             }).size(expectedCount.toInt())
                         },
                         PolicyDocument::class.java
@@ -180,32 +169,31 @@ internal class PolicyElasticSearchServiceIntegrationTest {
 
                     val searchCount = searchResponse.hits().total()!!.value()
                     if (searchCount >= expectedCount) {
-                        println("✅ 인덱싱 완료: ${searchCount}건 (시도: ${attempt + 1})")
+                        println("✅ 인덱싱 완료: " + searchCount + "건 (시도: " + (attempt + 1) + ")")
                         Thread.sleep(500)
                         return
                     }
                 }
 
                 if (attempt % 10 == 0 && attempt > 0) {
-                    println("⏳ 대기 중... $count / $expectedCount (시도: ${attempt + 1})")
+                    println("⏳ 대기 중... " + count + " / " + expectedCount + " (시도: " + (attempt + 1) + ")")
                     elasticsearchClient.indices().refresh(Function { r: RefreshRequest.Builder? -> r!!.index(INDEX) })
                 }
             } catch (e: Exception) {
                 if (attempt % 10 == 0 && attempt > 0) {
-                    println("⚠️ 검색 실패 (시도: ${attempt + 1}): " + e.message)
+                    println("⚠️ 검색 실패 (시도: " + (attempt + 1) + "): " + e.message)
                 }
             }
 
             Thread.sleep(WAIT_INTERVAL_MS)
         }
 
-        throw AssertionError("⚠️ 타임아웃: ${expectedCount}건 인덱싱 대기 실패 (마지막 확인: ${lastCount}건)")
+        throw AssertionError("⚠️ 타임아웃: " + expectedCount + "건 인덱싱 대기 실패 (마지막 확인: " + lastCount + "건)")
     }
 
     @Nested
     @DisplayName("인덱스 관리")
     internal inner class IndexManagement {
-
         @Test
         @DisplayName("ensureIndex: 인덱스가 없으면 생성")
         @Throws(Exception::class)
@@ -215,9 +203,9 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             policyElasticSearchService!!.ensureIndex()
             Thread.sleep(1000)
 
-            val exists = elasticsearchClient!!.indices()
-                .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
-                .value()
+            val exists =
+                elasticsearchClient!!.indices().exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
+                    .value()
             Assertions.assertThat(exists).isTrue()
         }
 
@@ -230,67 +218,66 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             policyElasticSearchService!!.ensureIndex()
             Thread.sleep(1000)
 
-            val firstExists = elasticsearchClient!!.indices()
-                .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
-                .value()
+            val firstExists =
+                elasticsearchClient!!.indices().exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
+                    .value()
             Assertions.assertThat(firstExists).isTrue()
 
             policyElasticSearchService.ensureIndex()
             Thread.sleep(500)
 
-            val stillExists = elasticsearchClient.indices()
-                .exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
-                .value()
+            val stillExists =
+                elasticsearchClient.indices().exists(Function { e: ExistsRequest.Builder? -> e!!.index(INDEX) })
+                    .value()
             Assertions.assertThat(stillExists).isTrue()
         }
     }
 
     @Nested
     @DisplayName("문서 인덱싱")
-    internal inner class DocumentIndexing {
-
+    internal open inner class DocumentIndexing {
         @Test
         @Transactional
         @DisplayName("reindexAllFromDb: DB의 Policy를 ES에 인덱싱")
         @Throws(Exception::class)
-        fun reindexAllFromDb_indexesAllPolicies() {
+        open fun reindexAllFromDb_indexesAllPolicies() {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val uniqueId1 = UUID.randomUUID().toString().substring(0, 8)
             val uniqueId2 = UUID.randomUUID().toString().substring(0, 8)
 
-            val policy1 = Policy(
-                plcyNo = "TEST-001-$uniqueId1",
-                plcyNm = "청년 주거 지원 정책",
-                sprtTrgtMinAge = "20",
-                sprtTrgtMaxAge = "39",
-                sprtTrgtAgeLmtYn = "Y",
-                earnCndSeCd = "연소득",
-                earnMinAmt = "0",
-                earnMaxAmt = "5000",
-                zipCd = "11",
-                jobCd = "J01",
-                schoolCd = "S01",
-                mrgSttsCd = "N",
-                plcyKywdNm = "청년,주거,취업",
-                plcyExplnCn = "청년을 위한 주거 지원 정책입니다"
-            )
+            val policy1 = Policy.builder()
+                .plcyNo("TEST-001-" + uniqueId1)
+                .plcyNm("청년 주거 지원 정책")
+                .sprtTrgtMinAge("20")
+                .sprtTrgtMaxAge("39")
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("연소득")
+                .earnMinAmt("0")
+                .earnMaxAmt("5000")
+                .zipCd("11")
+                .jobCd("J01")
+                .schoolCd("S01")
+                .mrgSttsCd("N")
+                .plcyKywdNm("청년,주거,취업")
+                .plcyExplnCn("청년을 위한 주거 지원 정책입니다")
+                .build()
 
-            val policy2 = Policy(
-                plcyNo = "TEST-002-$uniqueId2",
-                plcyNm = "중장년 취업 지원",
-                sprtTrgtMinAge = "40",
-                sprtTrgtMaxAge = "65",
-                sprtTrgtAgeLmtYn = "Y",
-                earnCndSeCd = "무관",
-                zipCd = "11",
-                jobCd = "J02",
-                plcyKywdNm = "취업,중장년",
-                plcyExplnCn = "중장년층 취업을 지원하는 정책입니다"
-            )
+            val policy2 = Policy.builder()
+                .plcyNo("TEST-002-" + uniqueId2)
+                .plcyNm("중장년 취업 지원")
+                .sprtTrgtMinAge("40")
+                .sprtTrgtMaxAge("65")
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("무관")
+                .zipCd("11")
+                .jobCd("J02")
+                .plcyKywdNm("취업,중장년")
+                .plcyExplnCn("중장년층 취업을 지원하는 정책입니다")
+                .build()
 
-            policyRepository!!.save(policy1)
-            policyRepository.save(policy2)
+            policyRepository!!.save<Policy>(policy1)
+            policyRepository.save<Policy>(policy2)
             policyRepository.flush()
 
             policyElasticSearchService!!.ensureIndex()
@@ -301,13 +288,13 @@ internal class PolicyElasticSearchServiceIntegrationTest {
 
             Assertions.assertThat(indexedCount).isGreaterThanOrEqualTo(2)
 
-            val searchResponse = elasticsearchClient!!.search(
+            val searchResponse = elasticsearchClient!!.search<PolicyDocument?>(
                 Function { s: SearchRequest.Builder? ->
                     s!!.index(INDEX).query(Function { q: Query.Builder? ->
-                        q!!.matchAll(Function { m: MatchAllQuery.Builder? -> m })
+                        q!!.matchAll(
+                            Function { m: MatchAllQuery.Builder? -> m })
                     })
-                },
-                PolicyDocument::class.java
+                }, PolicyDocument::class.java
             )
 
             Assertions.assertThat(searchResponse.hits().total()!!.value()).isGreaterThanOrEqualTo(2)
@@ -317,7 +304,7 @@ internal class PolicyElasticSearchServiceIntegrationTest {
         @Transactional
         @DisplayName("reindexAllFromDb: DB에 데이터가 없으면 0 반환")
         @Throws(IOException::class)
-        fun reindexAllFromDb_returnsZeroWhenNoData() {
+        open fun reindexAllFromDb_returnsZeroWhenNoData() {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             policyRepository!!.deleteAll()
@@ -331,12 +318,10 @@ internal class PolicyElasticSearchServiceIntegrationTest {
 
     @Nested
     @DisplayName("키워드 검색")
-    internal inner class KeywordSearch {
-
+    internal open inner class KeywordSearch {
         @BeforeEach
-        @Transactional
         @Throws(Exception::class)
-        fun setUp() {
+        open fun setUp() {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             policyRepository!!.deleteAll()
@@ -346,55 +331,55 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             val uniqueId2 = UUID.randomUUID().toString().substring(0, 8)
             val uniqueId3 = UUID.randomUUID().toString().substring(0, 8)
 
-            val policy1 = Policy(
-                plcyNo = "SEARCH-001-$uniqueId1",
-                plcyNm = "청년 주거 지원",
-                sprtTrgtMinAge = "20",
-                sprtTrgtMaxAge = "39",
-                sprtTrgtAgeLmtYn = "Y",
-                earnCndSeCd = "연소득",
-                earnMinAmt = "0",
-                earnMaxAmt = "5000",
-                zipCd = "11",
-                jobCd = "J01",
-                schoolCd = "S01",
-                mrgSttsCd = "N",
-                plcyKywdNm = "청년,주거",
-                plcyExplnCn = "청년을 위한 주거 지원 정책"
-            )
+            val policy1 = Policy.builder()
+                .plcyNo("SEARCH-001-" + uniqueId1)
+                .plcyNm("청년 주거 지원")
+                .sprtTrgtMinAge("20")
+                .sprtTrgtMaxAge("39")
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("연소득")
+                .earnMinAmt("0")
+                .earnMaxAmt("5000")
+                .zipCd("11")
+                .jobCd("J01")
+                .schoolCd("S01")
+                .mrgSttsCd("N")
+                .plcyKywdNm("청년,주거")
+                .plcyExplnCn("청년을 위한 주거 지원 정책")
+                .build()
 
-            val policy2 = Policy(
-                plcyNo = "SEARCH-002-$uniqueId2",
-                plcyNm = "중장년 취업 지원",
-                sprtTrgtMinAge = "40",
-                sprtTrgtMaxAge = "65",
-                sprtTrgtAgeLmtYn = "Y",
-                earnCndSeCd = "무관",
-                zipCd = "26",
-                jobCd = "J02",
-                plcyKywdNm = "취업,중장년",
-                plcyExplnCn = "중장년 취업을 지원합니다"
-            )
+            val policy2 = Policy.builder()
+                .plcyNo("SEARCH-002-" + uniqueId2)
+                .plcyNm("중장년 취업 지원")
+                .sprtTrgtMinAge("40")
+                .sprtTrgtMaxAge("65")
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("무관")
+                .zipCd("26")
+                .jobCd("J02")
+                .plcyKywdNm("취업,중장년")
+                .plcyExplnCn("중장년 취업을 지원합니다")
+                .build()
 
-            val policy3 = Policy(
-                plcyNo = "SEARCH-003-$uniqueId3",
-                plcyNm = "전체 교육 지원",
-                sprtTrgtMinAge = "18",
-                sprtTrgtMaxAge = "70",
-                sprtTrgtAgeLmtYn = "Y",
-                earnCndSeCd = "무관",
-                earnMinAmt = "0",
-                earnMaxAmt = "3000",
-                zipCd = "11",
-                jobCd = "J01",
-                schoolCd = "S02",
-                plcyKywdNm = "교육",
-                plcyExplnCn = "모든 연령 교육 지원"
-            )
+            val policy3 = Policy.builder()
+                .plcyNo("SEARCH-003-" + uniqueId3)
+                .plcyNm("전체 교육 지원")
+                .sprtTrgtMinAge("18")
+                .sprtTrgtMaxAge("70")
+                .sprtTrgtAgeLmtYn("Y")
+                .earnCndSeCd("무관")
+                .earnMinAmt("0")
+                .earnMaxAmt("3000")
+                .zipCd("11")
+                .jobCd("J01")
+                .schoolCd("S02")
+                .plcyKywdNm("교육")
+                .plcyExplnCn("모든 연령 교육 지원")
+                .build()
 
-            policyRepository.save(policy1)
-            policyRepository.save(policy2)
-            policyRepository.save(policy3)
+            policyRepository.save<Policy>(policy1)
+            policyRepository.save<Policy>(policy2)
+            policyRepository.save<Policy>(policy3)
             policyRepository.flush()
 
             policyElasticSearchService!!.ensureIndex()
@@ -411,10 +396,13 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(keyword = "청년")
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
-            Assertions.assertThat(results.any { it?.plcyNm?.contains("청년") == true }).isTrue()
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
+            Assertions.assertThat(
+                results!!.stream().anyMatch { doc -> doc!!.plcyNm!!.contains("청년") })
+                .isTrue()
         }
 
         @Test
@@ -424,11 +412,12 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(age = 25)
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
-            results.forEach { doc ->
-                if (doc?.minAge != null && doc.maxAge != null) {
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
+            results!!.forEach { doc ->
+                if (doc!!.minAge != null && doc.maxAge != null) {
                     Assertions.assertThat(doc.minAge).isLessThanOrEqualTo(25)
                     Assertions.assertThat(doc.maxAge).isGreaterThanOrEqualTo(25)
                 }
@@ -442,11 +431,12 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(earn = 3000)
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
-            results.forEach { doc ->
-                if (doc?.earnMin != null && doc.earnMax != null) {
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
+            results!!.forEach { doc ->
+                if (doc!!.earnMin != null && doc.earnMax != null) {
                     Assertions.assertThat(doc.earnMin).isLessThanOrEqualTo(3000)
                     Assertions.assertThat(doc.earnMax).isGreaterThanOrEqualTo(3000)
                 }
@@ -460,11 +450,12 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(regionCode = "11")
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
-            results.forEach { doc ->
-                if (doc?.regionCode != null) {
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
+            results!!.forEach { doc ->
+                if (doc!!.regionCode != null) {
                     Assertions.assertThat(doc.regionCode).isEqualTo("11")
                 }
             }
@@ -477,11 +468,12 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(jobCode = "J01")
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
-            results.forEach { doc ->
-                if (doc?.jobCode != null) {
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
+            results!!.forEach { doc ->
+                if (doc!!.jobCode != null) {
                     Assertions.assertThat(doc.jobCode).isEqualTo("J01")
                 }
             }
@@ -494,11 +486,12 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(marriageStatus = "N")
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
-            results.forEach { doc ->
-                if (doc?.marriageStatus != null) {
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
+            results!!.forEach { doc ->
+                if (doc!!.marriageStatus != null) {
                     Assertions.assertThat(doc.marriageStatus).isEqualTo("N")
                 }
             }
@@ -510,10 +503,11 @@ internal class PolicyElasticSearchServiceIntegrationTest {
         fun search_byKeywords() {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
-            val condition = PolicySearchCondition(keywords = listOf("청년", "주거"))
+            val condition = PolicySearchCondition(keywords = mutableListOf("청년", "주거"))
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
         }
 
         @Test
@@ -529,11 +523,12 @@ internal class PolicyElasticSearchServiceIntegrationTest {
                 regionCode = "11",
                 jobCode = "J01",
                 marriageStatus = "N",
-                keywords = listOf("주거")
+                keywords = mutableListOf("주거")
             )
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
         }
 
         @Test
@@ -543,20 +538,19 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition()
+
             val results = policyElasticSearchService!!.search(condition, 0, 10)
 
-            Assertions.assertThat(results).isNotEmpty()
+            Assertions.assertThat<PolicyDocument?>(results).isNotEmpty()
         }
     }
 
     @Nested
     @DisplayName("검색 결과 총 개수 포함")
-    internal inner class SearchWithTotal {
-
+    internal open inner class SearchWithTotal {
         @BeforeEach
-        @Transactional
         @Throws(Exception::class)
-        fun setUp() {
+        open fun setUp() {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             policyRepository!!.deleteAll()
@@ -564,13 +558,13 @@ internal class PolicyElasticSearchServiceIntegrationTest {
 
             for (i in 1..5) {
                 val uniqueId = UUID.randomUUID().toString().substring(0, 8)
-                val policy = Policy(
-                    plcyNo = "TOTAL-$i-$uniqueId",
-                    plcyNm = "테스트 정책 $i",
-                    plcyKywdNm = "테스트",
-                    plcyExplnCn = "테스트 정책 설명 $i"
-                )
-                policyRepository.save(policy)
+                val policy = Policy.builder()
+                    .plcyNo("TOTAL-" + i + "-" + uniqueId)
+                    .plcyNm("테스트 정책 " + i)
+                    .plcyKywdNm("테스트")
+                    .plcyExplnCn("테스트 정책 설명 " + i)
+                    .build()
+                policyRepository.save<Policy>(policy)
             }
             policyRepository.flush()
 
@@ -588,11 +582,14 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(keyword = "테스트")
-            val result = policyElasticSearchService!!.searchWithTotal(condition, 0, 10)
 
-            Assertions.assertThat(result.documents).isNotEmpty()
+            val result =
+                policyElasticSearchService!!.searchWithTotal(condition, 0, 10)
+
+            Assertions.assertThat<PolicyDocument?>(result.documents).isNotEmpty()
             Assertions.assertThat(result.total).isGreaterThanOrEqualTo(5)
-            Assertions.assertThat(result.total).isGreaterThanOrEqualTo(result.documents.size.toLong())
+            Assertions.assertThat(result.total)
+                .isGreaterThanOrEqualTo(result.documents.size.toLong())
         }
 
         @Test
@@ -602,6 +599,7 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(keyword = "테스트")
+
             val page1 = policyElasticSearchService!!.searchWithTotal(condition, 0, 2)
             val page2 = policyElasticSearchService.searchWithTotal(condition, 2, 2)
 
@@ -616,9 +614,11 @@ internal class PolicyElasticSearchServiceIntegrationTest {
             Assumptions.assumeTrue(elasticsearchAvailable, "Elasticsearch 서버가 필요합니다")
 
             val condition = PolicySearchCondition(keyword = "존재하지않는키워드12345")
-            val result = policyElasticSearchService!!.searchWithTotal(condition, 0, 10)
 
-            Assertions.assertThat(result.documents).isEmpty()
+            val result =
+                policyElasticSearchService!!.searchWithTotal(condition, 0, 10)
+
+            Assertions.assertThat<PolicyDocument?>(result.documents).isEmpty()
             Assertions.assertThat(result.total).isEqualTo(0)
         }
     }

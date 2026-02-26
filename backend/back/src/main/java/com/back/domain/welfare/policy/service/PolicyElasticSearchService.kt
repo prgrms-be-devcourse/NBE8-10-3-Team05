@@ -17,6 +17,7 @@ import com.back.domain.welfare.policy.repository.PolicyRepository
 import com.back.domain.welfare.policy.search.PolicyQueryBuilder
 import com.back.domain.welfare.policy.search.PolicySearchCondition
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.IOException
@@ -31,23 +32,23 @@ class PolicyElasticSearchService(                              // ✅ 생성자 
     private val esClient: ElasticsearchClient,
     private val policyRepository: PolicyRepository,
     private val policyDocumentMapper: PolicyDocumentMapper,
-    private val policyQueryBuilder: PolicyQueryBuilder
+    private val policyQueryBuilder: PolicyQueryBuilder,
+    @Value("\${app.elasticsearch.policy-index:policy}") private val indexName: String
 ) {
     companion object {
-        private const val INDEX = "policy"
         private val log = LoggerFactory.getLogger(PolicyElasticSearchService::class.java) // ✅ @Slf4j 대체
     }
 
     @Throws(IOException::class)
     fun ensureIndex() {
         val exists = esClient.indices()
-            .exists(ExistsRequest.of { r -> r.index(INDEX) })
+            .exists(ExistsRequest.of { r -> r.index(indexName) })
             .value()
 
         if (exists) return
 
         esClient.indices().create { c ->
-            c.index(INDEX).mappings { m ->
+            c.index(indexName).mappings { m ->
                 m.properties("policyId") { p -> p.integer { i -> i } }
                     .properties("plcyNo") { p -> p.keyword { k -> k } }
                     .properties("plcyNm") { p -> p.text { t -> t } }
@@ -67,7 +68,7 @@ class PolicyElasticSearchService(                              // ✅ 생성자 
             }
         }
 
-        log.info("Elasticsearch index created: {}", INDEX)
+        log.info("Elasticsearch index created: {}", indexName)
     }
 
     @Transactional
@@ -85,7 +86,7 @@ class PolicyElasticSearchService(                              // ✅ 생성자 
 
             ops.add(BulkOperation.of { b ->
                 b.index<Any> { i ->
-                    i.index(INDEX).id(doc.policyId.toString()).document(doc)
+                    i.index(indexName).id(doc.policyId.toString()).document(doc)
                 }
             })
         }
@@ -105,7 +106,7 @@ class PolicyElasticSearchService(                              // ✅ 생성자 
         val q = keyword?.trim() ?: ""
 
         val response = esClient.search<PolicyDocument>({ s ->
-            s.index(INDEX)
+            s.index(indexName)
                 .from(max(from, 0))
                 .size(min(max(size, 1), 100))
                 .query { query ->
@@ -129,10 +130,14 @@ class PolicyElasticSearchService(                              // ✅ 생성자 
 
     @Throws(IOException::class)
     fun search(condition: PolicySearchCondition?, from: Int, size: Int): List<PolicyDocument?> {
+        if (!esClient.indices().exists(ExistsRequest.of { r -> r.index(indexName) }).value()) {
+            log.warn("Elasticsearch index '{}' does not exist. Returning empty result.", indexName)
+            return emptyList()
+        }
         val query = policyQueryBuilder.build(condition)
 
         val response = esClient.search<PolicyDocument>({ s ->
-            s.index(INDEX)
+            s.index(indexName)
                 .from(max(from, 0))
                 .size(min(max(size, 1), 100))
                 .query(query)
@@ -143,17 +148,22 @@ class PolicyElasticSearchService(                              // ✅ 생성자 
 
     @Throws(IOException::class)
     fun searchWithTotal(condition: PolicySearchCondition?, from: Int, size: Int): SearchResult {
+        if (!esClient.indices().exists(ExistsRequest.of { r -> r.index(indexName) }).value()) {
+            log.warn("Elasticsearch index '{}' does not exist. Returning empty result with total=0.", indexName)
+            return SearchResult(emptyList(), 0L)
+        }
         val query = policyQueryBuilder.build(condition)
 
         val response = esClient.search<PolicyDocument>({ s ->
-            s.index(INDEX)
+            s.index(indexName)
                 .from(max(from, 0))
                 .size(min(max(size, 1), 100))
                 .query(query)
         }, PolicyDocument::class.java)
 
         val documents = response.hits().hits().mapNotNull { it.source() }
-        return SearchResult(documents, response.hits().total()!!.value())
+        val total = response.hits().total()?.value() ?: 0L
+        return SearchResult(documents, total)
     }
 
     class SearchResult(val documents: List<PolicyDocument?>, val total: Long)
