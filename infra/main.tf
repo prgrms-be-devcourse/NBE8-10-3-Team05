@@ -18,17 +18,47 @@ resource "aws_key_pair" "deployer" {
 # [공통] SSH(22)는 내 IP에서만 열어두는 것이 좋으나, 테스트용으로 전체 개방
 resource "aws_security_group" "ssh_sg" {
   name = "ssh-sg"
-  ingress { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
-  egress  { from_port = 0, to_port = 0, protocol = "-1", cidr_blocks = ["0.0.0.0/0"] }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # [Nginx] 외부에서 들어오는 80 포트 개방
 resource "aws_security_group" "nginx_sg" {
   name = "nginx-sg"
-  ingress { from_port = 80, to_port = 80, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # 배포/관리용 (SSH) - 키 인증 필수!
-  ingress { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
-  egress { from_port = 0, to_port = 0, protocol = "-1", cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # [WAS] Nginx 서버에서 오는 트래픽만 8080으로 허용 + 배포용 ssh
@@ -66,26 +96,90 @@ resource "aws_security_group" "was_sg" {
   }
 }
 
-# [모니터링] 외부에서 Grafana(3000), Prometheus(9090) 접근 허용
+# [모니터링] 외부에서 Grafana(3001), Prometheus(9090) 접근 허용
 resource "aws_security_group" "monitor_sg" {
   name = "monitor-sg"
-  ingress { from_port = 3001, to_port = 3001, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 9090, to_port = 9090, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
+
+  ingress {
+    from_port   = 3001
+    to_port     = 3001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # [DB/Cache/Search] WAS 서버와 모니터링 서버에서만 접근 허용
 resource "aws_security_group" "data_sg" {
   name = "data-sg"
+
   # MySQL
-  ingress { from_port = 3306, to_port = 3306, protocol = "tcp", security_groups = [aws_security_group.was_sg.id, aws_security_group.monitor_sg.id] }
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.was_sg.id, aws_security_group.monitor_sg.id]
+  }
+
   # Redis
-  ingress { from_port = 6379, to_port = 6379, protocol = "tcp", security_groups = [aws_security_group.was_sg.id, aws_security_group.monitor_sg.id] }
-  # ES
-  ingress { from_port = 9200, to_port = 9200, protocol = "tcp", security_groups = [aws_security_group.was_sg.id, aws_security_group.monitor_sg.id] }
-  # Exporters
-  ingress { from_port = 9104, to_port = 9104, protocol = "tcp", security_groups = [aws_security_group.monitor_sg.id] }
-  ingress { from_port = 9121, to_port = 9121, protocol = "tcp", security_groups = [aws_security_group.monitor_sg.id] }
-  ingress { from_port = 9114, to_port = 9114, protocol = "tcp", security_groups = [aws_security_group.monitor_sg.id] }
+  ingress {
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.was_sg.id, aws_security_group.monitor_sg.id]
+  }
+
+  # Elasticsearch
+  ingress {
+    from_port       = 9200
+    to_port         = 9200
+    protocol        = "tcp"
+    security_groups = [aws_security_group.was_sg.id, aws_security_group.monitor_sg.id]
+  }
+
+  # MySQL Exporter
+  ingress {
+    from_port       = 9104
+    to_port         = 9104
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitor_sg.id]
+  }
+
+  # Redis Exporter
+  ingress {
+    from_port       = 9121
+    to_port         = 9121
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitor_sg.id]
+  }
+
+  # ES Exporter
+  ingress {
+    from_port       = 9114
+    to_port         = 9114
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitor_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 
