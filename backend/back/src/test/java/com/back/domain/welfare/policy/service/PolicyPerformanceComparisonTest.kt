@@ -8,6 +8,7 @@ import co.elastic.clients.elasticsearch.indices.RefreshRequest
 import com.back.domain.welfare.policy.dto.PolicySearchRequestDto
 import com.back.domain.welfare.policy.dto.PolicySearchResponseDto
 import com.back.domain.welfare.policy.entity.Policy
+import com.back.domain.welfare.policy.entity.Policy.Companion.builder
 import com.back.domain.welfare.policy.repository.PolicyRepository
 import com.back.domain.welfare.policy.search.PolicySearchCondition
 import org.junit.jupiter.api.*
