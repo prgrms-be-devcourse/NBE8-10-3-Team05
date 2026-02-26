@@ -9,6 +9,15 @@ spring:
   datasource:
     hikari:
       auto-commit: false
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:./db_dev;MODE=MySQL}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
   jackson:
     serialization:
       fail-on-empty-beans: false

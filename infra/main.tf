@@ -35,28 +35,35 @@ resource "aws_security_group" "nginx_sg" {
 resource "aws_security_group" "was_sg" {
   name = "was-sg"
   # 1. 서비스 트래픽 (Nginx -> WAS)
-    ingress {
-      from_port       = 8080
-      to_port         = 8080
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.nginx_sg.id]
+  }
+
+  ingress {
+      from_port       = 3000
+      to_port         = 3000
       protocol        = "tcp"
       security_groups = [aws_security_group.nginx_sg.id]
     }
 
-    # 2. 배포용 SSH (Nginx 서버에서만 접속 허용!)
-    ingress {
-      from_port       = 22
-      to_port         = 22
-      protocol        = "tcp"
-      security_groups = [aws_security_group.nginx_sg.id] # 핵심: Nginx SG만 허용
-    }
+  # 2. 배포용 SSH (Nginx 서버에서만 접속 허용!)
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.nginx_sg.id] # 핵심: Nginx SG만 허용
+  }
 
-    # 3. 아웃바운드 규칙 (Docker 이미지를 받아오기 위해 필수)
-    egress {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
+  # 3. 아웃바운드 규칙 (Docker 이미지를 받아오기 위해 필수)
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # [모니터링] 외부에서 Grafana(3000), Prometheus(9090) 접근 허용
@@ -229,13 +236,14 @@ resource "aws_instance" "was_servers" {
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
               sudo systemctl start docker && sudo usermod -aG docker ubuntu
+
               mkdir -p /home/ubuntu/app
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
               version: '3.8'
               services:
                 app:
-                  image: 내아이디/my-app:v1 # Docker Hub에 올려둔 이미지
-                  ports: [ "8080:8080" ]
+                  image: gurum505/spring-next-app:v1 # Docker Hub에 올려둔 이미지
+                  ports: [ "8080:8080" , "3000:3000" ]
                   environment:
                     - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db
                     - SPRING_DATA_REDIS_HOST=${aws_instance.redis_server.private_ip}
@@ -271,25 +279,45 @@ resource "aws_instance" "nginx_server" {
 
               # Nginx 설정 파일 자동 생성 (WAS 1, 2 로드밸런싱 설정)
               cat <<EOT > /home/ubuntu/app/nginx.conf
-              upstream was_group {
+              upstream was_frontend {
+                  server ${aws_instance.was_servers[0].private_ip}:3000 max_fails=3 fail_timeout=30s;
+                  server ${aws_instance.was_servers[1].private_ip}:3000 max_fails=3 fail_timeout=30s;
+              }
+
+              upstream was_backend {
                   server ${aws_instance.was_servers[0].private_ip}:8080 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:8080 max_fails=3 fail_timeout=30s;
               }
+
               server {
                   listen 80;
 
-                  # 타임아웃 설정 (WAS 업데이트 중 응답 지연 대비)
-                  proxy_connect_timeout 5s;
-                  proxy_read_timeout 60s;
+                  # 공통 프록시 설정 (가독성을 위해 블록 밖으로 뺄 수 없으므로 각 location에 적용)
 
-                  location / {
-                      proxy_pass http://was_group;
+                  # 1. API 요청 (Spring Boot)
+                  location /api {
+                      proxy_pass http://was_backend;
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 
-                      # WAS 한 대가 에러(5xx)나면 즉시 다음 서버로 시도
+                      # 무중단 배포 핵심 설정
                       proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                      proxy_connect_timeout 5s;
+                      proxy_read_timeout 60s;
+                  }
+
+                  # 2. 정적 파일 및 화면 요청 (Next.js)
+                  location / {
+                      proxy_pass http://was_frontend;
+                      proxy_set_header Host \$host;
+                      proxy_set_header X-Real-IP \$remote_addr;
+                      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+
+                      # 무중단 배포 핵심 설정
+                      proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                      proxy_connect_timeout 5s;
+                      proxy_read_timeout 60s;
                   }
               }
               EOT
