@@ -126,4 +126,4 @@ infra/*.tfvars
 infra/terraform.tfvars
 infra/my-key.pub
 infra/variables.tf
-infra/variables.tfvars
+infra/terraform.tfvars

@@ -246,7 +246,7 @@ resource "aws_instance" "redis_server" {
 
 resource "aws_instance" "es_server" {
   ami                    = "ami-04d25ae66444b2b10"
-  instance_type          = "t2.micro"
+  instance_type          = "t3.micro"
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.data_sg.id]
   tags = { Name = "elasticsearch" }
@@ -336,14 +336,14 @@ resource "aws_instance" "was_servers" {
               version: '3.8'
               services:
                 app:
-                  image: gurum505/spring-next-app:v1 # Docker Hub에 올려둔 이미지
+                  image: gurum505/spring-next-app:v1.1 # Docker Hub에 올려둔 이미지
                   ports: [ "8080:8080" , "3000:3000" ]
                   environment:
                     # 1. Database
                     - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
                     - SPRING_DATASOURCE_USERNAME=${var.db_username}
                     - SPRING_DATASOURCE_PASSWORD=${var.db_password}
-                    - SPRING_DATASOURCE_DRIVER=${var.db_driver_class_name}
+                    - SPRING_DATASOURCE_DRIVER_CLASS_NAME=${var.db_driver_class_name}
 
                     # 2. Redis & Elasticsearch
                     - SPRING_DATA_REDIS_HOST=${aws_instance.redis_server.private_ip}

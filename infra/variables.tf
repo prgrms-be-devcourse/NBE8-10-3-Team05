@@ -11,6 +11,12 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "db_driver_class_name" {
+  description = "db_driver_class_name"
+    type        = string
+    sensitive   = true
+}
+
 # --- OAuth ---
 variable "kakao_client_id" {
   type      = string
