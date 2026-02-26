@@ -1,6 +1,8 @@
 name: 무중단 배포
 
 on:
+  workflow_dispatch:
+    
   push:
     branches: [ main ]
 
