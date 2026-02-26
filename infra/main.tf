@@ -110,7 +110,7 @@ resource "aws_instance" "db_server" {
                   image: mysql:latest
                   ports: [ "3306:3306" ]
                   environment:
-                    - MYSQL_ROOT_PASSWORD=root_password
+                    - MYSQL_ROOT_PASSWORD=${var.db_password}
                     - MYSQL_DATABASE=my_db
                 mysql-exporter:
                   image: prom/mysqld-exporter:latest
@@ -245,9 +245,35 @@ resource "aws_instance" "was_servers" {
                   image: gurum505/spring-next-app:v1 # Docker Hub에 올려둔 이미지
                   ports: [ "8080:8080" , "3000:3000" ]
                   environment:
-                    - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db
+                    # 1. Database
+                    - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+                    - SPRING_DATASOURCE_USERNAME=${var.db_username}
+                    - SPRING_DATASOURCE_PASSWORD=${var.db_password}
+                    - SPRING_DATASOURCE_DRIVER=${var.db_driver_class_name}
+
+                    # 2. Redis & Elasticsearch
                     - SPRING_DATA_REDIS_HOST=${aws_instance.redis_server.private_ip}
-                    - SPRING_ELASTICSEARCH_URIS=http://${aws_instance.es_server.private_ip}:9200
+                    - SPRING_DATA_REDIS_PORT=6379
+                    - ELASTICSEARCH_HOST=${aws_instance.es_server.private_ip}
+                    - ELASTICSEARCH_PORT=9200
+                    - ELASTICSEARCH_ENABLED=true
+
+                    # 3. Application Profiles & Security
+                    # 기본값이 dev이기때문에 prod로 변경필요
+                    - SPRING_PROFILES_ACTIVE=prod
+                    - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
+                    - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
+
+                    # 4. External API Keys (YAML의 구조에 맞춰 주입)
+                    - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}
+                    - CUSTOM_API_ESTATE_URL=${var.api_url_estate}
+                    - CUSTOM_API_POLICY_KEY=${var.api_key_policy}
+                    - CUSTOM_API_POLICY_URL=${var.api_url_policy}
+                    - CUSTOM_API_GEO_KEY=${var.api_key_geo}
+                    - CUSTOM_API_GEO_URL=${var.api_url_geo}
+                    - CUSTOM_API_CENTER_KEY=${var.api_key_center}
+                    - CUSTOM_API_CENTER_URL=${var.api_url_center}
+
               EOT
               cd /home/ubuntu/app && docker-compose up -d
               EOF
