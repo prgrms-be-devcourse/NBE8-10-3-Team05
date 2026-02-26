@@ -1,4 +1,12 @@
 plugins {
+    // 1. Kotlin 관련 플러그인 추가
+    kotlin("jvm") version "2.1.0"
+    kotlin("plugin.spring") version "2.1.0" // Spring의 final 클래스 문제를 해결 (all-open)
+    kotlin("plugin.jpa") version "2.1.0"    // JPA Entity의 기본 생성자 문제를 해결 (no-arg)
+
+    // 2. Querydsl을 위한 KSP (Annotation Processor 대체)
+    kotlin("kapt") version "2.1.0"
+
     java
     id("org.springframework.boot") version "4.0.1"
     id("io.spring.dependency-management") version "1.1.7"
@@ -10,6 +18,16 @@ group = "com"
 version = "0.0.1-SNAPSHOT"
 description = "back"
 val querydslVersion = "6.10.1"
+
+kapt {
+    keepJavacAnnotationProcessors = true // 자바 어노테이션 프로세서(Lombok 등)와 함께 사용
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xjsr305=strict")
+    }
+}
 
 java {
     toolchain {
@@ -59,16 +77,27 @@ checkstyle {
     configFile = file("$rootDir/config/checkstyle/checkstyle.xml")
 }
 
-//Querydsl 사용 시 Q클래스 생성 경로 명시
-sourceSets {
-    main {
-        java {
-            srcDir("build/generated/sources/annotationProcessor/java/main")
-        }
-    }
-}
+
 
 dependencies {
+
+    // 6. Kotlin 필수 라이브러리
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib")
+
+    //kotlin
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+
+    //java lombok
+    annotationProcessor("org.projectlombok:lombok")
+
+    //kotlin lombok
+    compileOnly("org.projectlombok:lombok:1.18.34")
+    kapt("org.projectlombok:lombok:1.18.34")
+
+    // 테스트에서도 롬복이 필요하다면
+    testCompileOnly("org.projectlombok:lombok:1.18.34")
+    kaptTest("org.projectlombok:lombok:1.18.34")
 
     // Social Login
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
@@ -81,9 +110,12 @@ dependencies {
     // Querydsl
     implementation("io.github.openfeign.querydsl:querydsl-core:$querydslVersion")
     implementation("io.github.openfeign.querydsl:querydsl-jpa:$querydslVersion")
-    annotationProcessor("io.github.openfeign.querydsl:querydsl-apt:$querydslVersion:jpa")
-    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
-    annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+    kapt("io.github.openfeign.querydsl:querydsl-apt:$querydslVersion:jpa")
+    kapt("jakarta.persistence:jakarta.persistence-api")
+    kapt("jakarta.annotation:jakarta.annotation-api")
+//    annotationProcessor("io.github.openfeign.querydsl:querydsl-apt:$querydslVersion:jpa")
+//    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
+//    annotationProcessor("jakarta.annotation:jakarta.annotation-api")
 
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -92,6 +124,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-batch")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
 
     // DB
     runtimeOnly("com.h2database:h2")
@@ -104,8 +137,7 @@ dependencies {
     implementation("org.jsoup:jsoup:1.17.2")
 
     // Dev tools
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
+
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
     // Test
@@ -133,5 +165,6 @@ tasks.withType<Test> {
 
     testLogging {
         events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
 }
