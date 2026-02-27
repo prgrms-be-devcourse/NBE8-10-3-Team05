@@ -71,18 +71,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} << ENDSSH
-              docker pull gurum505/spring-next-app:v1.0
-              cd /home/ubuntu/app && sudo docker-compose down
-              CONTAINERS=\$(docker ps -aq)
-              if [ -n "\$CONTAINERS" ]; then
-                docker stop \$CONTAINERS
-                docker rm \$CONTAINERS
-              fi
-              docker run -d \
-                --name app \
-                -p 8080:8080 \
-                -p 3000:3000 \
-                gurum505/spring-next-app:v1.0
+              cd /home/ubuntu/app
+              sudo docker-compose pull
+              sudo docker-compose down
+              sudo docker-compose up -d
             ENDSSH
 
       # 3. WAS1 헬스체크
@@ -212,18 +204,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} << ENDSSH
-              docker pull gurum505/spring-next-app:v1.0
-              cd /home/ubuntu/app && sudo docker-compose down
-              CONTAINERS=\$(docker ps -aq)
-              if [ -n "\$CONTAINERS" ]; then
-                docker stop \$CONTAINERS
-                docker rm \$CONTAINERS
-              fi
-              docker run -d \
-                --name app \
-                -p 8080:8080 \
-                -p 3000:3000 \
-                gurum505/spring-next-app:v1.0
+              cd /home/ubuntu/app
+              sudo docker-compose pull
+              sudo docker-compose down
+              sudo docker-compose up -d
             ENDSSH
 
       # 3. WAS2 헬스체크
