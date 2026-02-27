@@ -120,7 +120,7 @@ class Member private constructor(
                 rrnBackFirst = rrnBackFirst,
                 type = LoginType.EMAIL,
                 role = Role.USER,
-                providerId = null,
+                providerId = email,
                 profileImgUrl = null,
                 status = MemberStatus.ACTIVE
             )
@@ -208,6 +208,7 @@ class Member private constructor(
 
         this.status = MemberStatus.DELETED
         this.deletedAt = LocalDateTime.now()
+        this.providerId = "deleted_${System.currentTimeMillis()}_${this.providerId}"
         touchModifiedAt()
     }
 }
