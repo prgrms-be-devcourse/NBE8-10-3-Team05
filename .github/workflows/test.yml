@@ -88,6 +88,10 @@ jobs:
                 }
               }
             }
+          SPRING_DATASOURCE_URL: jdbc:h2:mem:testdb;MODE=MySQL
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
+          SPRING_DATASOURCE_USERNAME: sa
+          SPRING_DATASOURCE_PASSWORD: ""
           CUSTOM_API_ESTATE_KEY: ${{secrets.CUSTOM_API_ESTATE_KEY}}
           CUSTOM_API_ESTATE_URL: ${{secrets.CUSTOM_API_ESTATE_URL}}
           CUSTOM_API_GEO_URL: ${{ secrets.CUSTOM_API_GEO_URL }}
