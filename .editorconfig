@@ -9,3 +9,6 @@ max_line_length = 120
 
 [{*.yml,*.yaml}]
 indent_size = 2
+
+[*.{tf,tfvars,js,jsx,ts,tsx,json}]
+indent_size = 2
