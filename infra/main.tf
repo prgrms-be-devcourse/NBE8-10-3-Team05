@@ -420,8 +420,8 @@ resource "aws_instance" "nginx_server" {
               mkdir -p /home/ubuntu/app/certbot/www
 
               # 업스트림 설정파일. git action배포시마다 바뀌는 부분
-              mkdir -p /home/ubuntu/app/nginx/conf.d
-              cat <<EOT > /home/ubuntu/app/nginx/conf.d/upstreams.inc
+              mkdir -p /home/ubuntu/app/conf.d
+              cat <<EOT > /home/ubuntu/app/conf.d/upstreams.inc
               upstream was_frontend {
                   server ${aws_instance.was_servers[0].private_ip}:3000 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:3000 max_fails=3 fail_timeout=30s;
@@ -436,7 +436,7 @@ resource "aws_instance" "nginx_server" {
               # Nginx 설정 파일 자동 생성 (WAS 1, 2 로드밸런싱 설정)
               cat <<EOT > /home/ubuntu/app/nginx.conf
 
-              include /etc/nginx/conf.d/upstreams.inc;
+              include /etc/conf.d/upstreams.inc;
 
               server {
                   listen 80;
@@ -520,8 +520,8 @@ resource "aws_instance" "nginx_server" {
                     - "80:80"
                     - "443:443"
                   volumes:
-                    - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-                    - ./nginx/conf.d:/etc/nginx/conf.d:ro
+                    - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                    - ./conf.d:/etc/nginx/conf.d:ro
                     - ./certbot/conf:/etc/letsencrypt
                     - ./certbot/www:/var/www/certbot
                 certbot:
