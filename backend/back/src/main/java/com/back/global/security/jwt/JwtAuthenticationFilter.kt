@@ -25,15 +25,16 @@ class JwtAuthenticationFilter(
 
     // 토큰 없이도 허용할 경로들 (SecurityConfig의 permitAll과 맞춰주는 게 중요)
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        val path = request.requestURI
-        return path.startsWith("/h2-console")
-            || path.startsWith("/api/v1/welfare") // 기본적으로 조회는 모두 가능하도록
-            || path == "/api/v1/member/member/join"
-            || path == "/api/v1/member/member/login"
-            || path == "/api/v1/member/member/logout"
-            || path == "/api/v1/auth/reissue"
-            || path == "/favicon.ico"
-            || path == "/batchTest"
+    val path = request.requestURI
+    return path.startsWith("/h2-console")
+        || path.startsWith("/api/v1/welfare")
+        || path == "/api/v1/member/member/join"
+        || path == "/api/v1/member/member/login"
+        || path == "/api/v1/member/member/logout"
+        || path == "/api/v1/auth/reissue"
+        || path == "/favicon.ico"
+        || path == "/batchTest"
+        || path.startsWith("/actuator")
     }
 
     override fun doFilterInternal(

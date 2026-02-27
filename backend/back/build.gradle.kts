@@ -156,6 +156,13 @@ dependencies {
     implementation("org.elasticsearch.client:elasticsearch-rest-client:8.11.3")
     implementation("org.apache.httpcomponents.client5:httpclient5")
 
+    // prometheus
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+
+    //mysql
+    runtimeOnly ("com.mysql:mysql-connector-j")
+
 }
 
 tasks.withType<Test> {

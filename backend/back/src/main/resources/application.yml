@@ -1,17 +1,24 @@
+# ===================================================================
+# Spring Boot 프로젝트 통합 설정 (application.yml)
+# ===================================================================
 spring:
   application:
     name: back
   profiles:
     active: dev
-  output:
-    ansi:
-      enabled: always
+
+  # 1. Spring Persistence & Database (H2/MySQL)
   datasource:
     hikari:
       auto-commit: false
-  jackson:
-    serialization:
-      fail-on-empty-beans: false
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:./db_dev;MODE=MySQL}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
   jpa:
     show-sql: true
     hibernate:
@@ -21,9 +28,37 @@ spring:
         format_sql: true
         highlight_sql: true
         use_sql_comments: true
+
+  # 2. Spring Security & OAuth2 (Kakao)
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            clientId: ${KAKAO_CLIENT_ID:YOUR_KAKAO_CLIENT_ID}
+            scope: profile_nickname, profile_image
+            client-name: Kakao
+            authorization-grant-type: authorization_code
+            redirect-uri: '{baseUrl}/{action}/oauth2/code/{registrationId}'
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
+  # 3. Spring Common Settings
+  output:
+    ansi:
+      enabled: always
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
   batch:
     job:
       enabled: false
+
+# 외부 라이브러리 및 로깅
 springdoc:
   default-produces-media-type: application/json;charset=UTF-8
 logging:
@@ -46,6 +81,10 @@ logging:
       max-history: 4
       max-file-size: 100MB
       total-size-cap: 500MB
+
+# -------------------------------------------------------------------
+# 사용자 정의 설정 (Custom API Keys & Secrets)
+# -------------------------------------------------------------------
 custom:
   accessToken:
     expirationSeconds: 2000
@@ -56,3 +95,23 @@ custom:
     scheme: ${ELASTICSEARCH_SCHEME:http}
     connection-timeout: ${ELASTICSEARCH_CONNECTION_TIMEOUT:5000}
     socket-timeout: ${ELASTICSEARCH_SOCKET_TIMEOUT:60000}
+  api:
+    estate:
+      key: ${CUSTOM_API_ESTATE_KEY}
+      url: ${CUSTOM_API_ESTATE_URL}
+    policy:
+      key: ${CUSTOM_API_POLICY_KEY}
+      url: ${CUSTOM_API_POLICY_URL}
+    geo:
+      key: ${CUSTOM_API_GEO_KEY}
+      url: ${CUSTOM_API_GEO_URL}
+    center:
+      key: ${CUSTOM_API_CENTER_KEY}
+      url: ${CUSTOM_API_CENTER_URL}
+  jwt:
+    secretKey: ${CUSTOM_JWT_SECRET_KEY}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health

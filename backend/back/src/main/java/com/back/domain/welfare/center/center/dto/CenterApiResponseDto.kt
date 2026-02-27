@@ -11,7 +11,7 @@ data class CenterApiResponseDto(
     val data: List<CenterDto>
 ) {
     data class CenterDto(
-        val id: Int,
+        val id: Int?,
 
         val city: String?,
 

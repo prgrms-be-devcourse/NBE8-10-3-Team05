@@ -36,7 +36,8 @@ class SecurityConfig(
                 auth.requestMatchers("/favicon.ico", "/h2-console/**", "/error")
                     .permitAll()
                     // 기본적으로 모든 조회는 가능하지만 user인증이 필요한 기능만 block
-                    .requestMatchers("/api/v1/welfare/**")
+                    .requestMatchers("/api/v1/welfare/**", "/actuator/**")
+                    // "/actuator/**" 허용해주므로서 모니터링 가능하도록 함
                     .permitAll()
                     .requestMatchers(
                         "/api/v1/member/member/login",
