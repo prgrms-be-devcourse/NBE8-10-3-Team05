@@ -233,7 +233,7 @@ resource "aws_instance" "db_server" {
                   image: prom/mysqld-exporter:latest
                   ports: [ "9104:9104" ]
                   environment:
-                    - DATA_SOURCE_NAME=root:root_password@(mysql:3306)/
+                    - DATA_SOURCE_NAME=root:${var.db_password}@(mysql:3306)/
               EOT
               cd /home/ubuntu/app && docker-compose up -d
               EOF
@@ -359,7 +359,7 @@ resource "aws_instance" "was_servers" {
               version: '3.8'
               services:
                 app:
-                  image: gurum505/spring-next-app:v1.1 # Docker Hub에 올려둔 이미지
+                  image: ${var.docker_image_name} # Docker Hub에 올려둔 이미지
                   ports: [ "8080:8080" , "3000:3000" ]
                   environment:
                     # 1. Database
@@ -433,7 +433,7 @@ resource "aws_instance" "nginx_server" {
 
               server {
                   listen 80;
-                  server_name gurum505.duckdns.org;
+                  server_name ${var.dns_name};
 
                   # Certbot 인증 경로
                   location /.well-known/acme-challenge/ {
@@ -472,10 +472,10 @@ resource "aws_instance" "nginx_server" {
               # HTTPS 서버 (443포트) - 인증서 발급 후 아래 전체 주석을 푸세요
               # server {
               #     listen 443 ssl;
-              #     server_name gurum505.duckdns.org;
+              #     server_name ${var.dns_name};
               #
-              #     ssl_certificate /etc/letsencrypt/live/gurum505.duckdns.org/fullchain.pem;
-              #     ssl_certificate_key /etc/letsencrypt/live/gurum505.duckdns.org/privkey.pem;
+              #     ssl_certificate /etc/letsencrypt/live/${var.dns_name}/fullchain.pem;
+              #     ssl_certificate_key /etc/letsencrypt/live/${var.dns_name}/privkey.pem;
               #
               #     location /api {
               #         proxy_pass http://was_backend;
@@ -492,6 +492,14 @@ resource "aws_instance" "nginx_server" {
               #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
               #         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
               #     }
+              #
+              #     location /grafana/ {
+              #         proxy_pass http://${aws_instance.monitor_server.private_ip}:3000/; # 모니터링 서버의 사설 IP
+              #         proxy_set_header Host \$host;
+              #         proxy_set_header X-Real-IP \$remote_addr;
+              #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              #         proxy_set_header X-Forwarded-Proto \$scheme;
+              #     }
               # }
               EOT
 
@@ -502,11 +510,11 @@ resource "aws_instance" "nginx_server" {
                   image: nginx:latest
                   ports:
                     - "80:80"
-                    - "443:443" # [수정] HTTPS용 포트 개방
+                    - "443:443"
                   volumes:
                     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-                    - ./certbot/conf:/etc/letsencrypt  # [수정] Certbot이 발급한 인증서를 Nginx와 공유
-                    - ./certbot/www:/var/www/certbot   # [수정] Certbot의 Challenge 폴더를 Nginx와 공유
+                    - ./certbot/conf:/etc/letsencrypt
+                    - ./certbot/www:/var/www/certbot
                 certbot:
                   image: certbot/certbot:latest
                   volumes:
@@ -560,6 +568,8 @@ resource "aws_instance" "monitor_server" {
                   ports: [ "3001:3000" ]
                   environment:
                     - GF_SECURITY_ADMIN_PASSWORD=admin
+                    - GF_SERVER_ROOT_URL=https://${var.dns_name}/grafana/
+                    - GF_SERVER_SERVE_FROM_SUB_PATH=true
               EOT
               cd /home/ubuntu/app && docker-compose up -d
               EOF

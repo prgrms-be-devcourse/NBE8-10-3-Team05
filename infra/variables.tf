@@ -1,3 +1,17 @@
+# --- docker ---
+variable "docker_image_name" {
+  description = "도커 이미지"
+  type        = string
+  default     = "root"
+}
+
+# --- dns ---
+variable "dns_name" {
+  description = "dns 서버 주소"
+  type        = string
+  default     = "root"
+}
+
 # --- Database Credentials ---
 variable "db_username" {
   description = "MySQL 접속 계정"
