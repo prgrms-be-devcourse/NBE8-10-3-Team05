@@ -35,15 +35,13 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} "
-              cd /home/ubuntu/app &&
-              # 1. 원격에서 최신 이미지(latest) 가져오기
-              sudo docker-compose pull &&
-              # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
-              sudo docker-compose down &&
-              # 3. 새 이미지로 다시 띄우기
-              sudo docker-compose up -d
-            "
+            cd /home/ubuntu/app &&
+            # 1. 원격에서 최신 이미지(latest) 가져오기
+            sudo docker-compose pull &&
+            # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
+            sudo docker-compose down &&
+            # 3. 새 이미지로 다시 띄우기
+            sudo docker-compose up -d
 
       - name: WAS1 헬스체크
         run: |
@@ -108,15 +106,13 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} "
-              cd /home/ubuntu/app &&
-              # 1. 원격에서 최신 이미지(latest) 가져오기
-              sudo docker-compose pull &&
-              # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
-              sudo docker-compose down &&
-              # 3. 새 이미지로 다시 띄우기
-              sudo docker-compose up -d
-            "
+            cd /home/ubuntu/app &&
+            # 1. 원격에서 최신 이미지(latest) 가져오기
+            sudo docker-compose pull &&
+            # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
+            sudo docker-compose down &&
+            # 3. 새 이미지로 다시 띄우기
+            sudo docker-compose up -d
 
       - name: WAS2 헬스체크
         run: |
