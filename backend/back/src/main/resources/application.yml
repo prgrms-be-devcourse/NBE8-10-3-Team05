@@ -110,3 +110,8 @@ custom:
       url: ${CUSTOM_API_CENTER_URL}
   jwt:
     secretKey: ${CUSTOM_JWT_SECRET_KEY}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health
