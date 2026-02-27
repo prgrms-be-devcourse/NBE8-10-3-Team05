@@ -354,6 +354,13 @@ resource "aws_instance" "was_servers" {
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
               sudo systemctl start docker && sudo usermod -aG docker ubuntu
 
+              # swap 설정
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
               mkdir -p /home/ubuntu/app
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
               version: '3.8'
@@ -362,6 +369,9 @@ resource "aws_instance" "was_servers" {
                   image: ${var.docker_image_name} # Docker Hub에 올려둔 이미지
                   ports: [ "8080:8080" , "3000:3000" ]
                   environment:
+                    - JAVA_OPTS=-Xms256m -Xmx512m
+                    - NODE_OPTIONS=--max-old-space-size=400
+
                     # 1. Database
                     - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
                     - SPRING_DATASOURCE_USERNAME=${var.db_username}
