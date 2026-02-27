@@ -2,15 +2,14 @@ package com.back.domain.welfare.policy.dto
 
 /**
  * 청년정책 Open API 응답 DTO
- * - API 구조 그대로 표현
+ * - 모든 필드에 기본값을 추가하여 Jackson의 기본 생성자 부재 문제 해결
  */
 data class PolicyFetchResponseDto(
-    val resultCode: Int,
-    val resultMessage: String?,
-    @JvmField //추후 삭제필요
-    val result: Result?
+    val resultCode: Int = 0,
+    val resultMessage: String? = null,
+    @JvmField
+    val result: Result? = null
 ) {
-    // Java record 스타일 호환 accessor
     fun result() = result
 
     companion object {
@@ -34,14 +33,12 @@ data class PolicyFetchResponseDto(
      * result 영역
      */
     data class Result(
-        val pagging: Pagging?,
-        @JvmField //추후 삭제필요
-        val youthPolicyList: List<PolicyItem>?
+        val pagging: Pagging? = null,
+        @JvmField
+        val youthPolicyList: List<PolicyItem>? = null
     ) {
-        // Java record 스타일 호환 accessor
         fun youthPolicyList() = youthPolicyList
 
-        ////마이그레이션 안정성을 위해 임시로 builder패턴 직접구현. 최종적으로는 삭제 필요
         companion object {
             @JvmStatic
             fun builder() = Builder()
@@ -62,9 +59,9 @@ data class PolicyFetchResponseDto(
      * 페이징 정보
      */
     data class Pagging(
-        val totCount: Int,
-        val pageNum: Int,
-        val pageSize: Int
+        val totCount: Int = 0,
+        val pageNum: Int = 0,
+        val pageSize: Int = 0
     ) {
         companion object {
             @JvmStatic
@@ -88,67 +85,65 @@ data class PolicyFetchResponseDto(
      * 청년 정책 단건
      */
     data class PolicyItem(
-        val plcyNo: String?,
-        val bscPlanCycl: String?,
-        val bscPlanPlcyWayNo: String?,
-        val bscPlanFcsAsmtNo: String?,
-        val bscPlanAsmtNo: String?,
-        val pvsnInstGroupCd: String?,
-        val plcyPvsnMthdCd: String?,
-        val plcyAprvSttsCd: String?,
-        val plcyNm: String?,
-        val plcyKywdNm: String?,
-        val plcyExplnCn: String?,
-        val lclsfNm: String?,
-        val mclsfNm: String?,
-        val plcySprtCn: String?,
-        val sprvsnInstCd: String?,
-        val sprvsnInstCdNm: String?,
-        val sprvsnInstPicNm: String?,
-        val operInstCd: String?,
-        val operInstCdNm: String?,
-        val operInstPicNm: String?,
-        val sprtSclLmtYn: String?,
-        val aplyPrdSeCd: String?,
-        val bizPrdSeCd: String?,
-        val bizPrdBgngYmd: String?,
-        val bizPrdEndYmd: String?,
-        val bizPrdEtcCn: String?,
-        val plcyAplyMthdCn: String?,
-        val srngMthdCn: String?,
-        val aplyUrlAddr: String?,
-        val sbmsnDcmntCn: String?,
-        val etcMttrCn: String?,
-        val refUrlAddr1: String?,
-        val refUrlAddr2: String?,
-        val sprtSclCnt: String?,
-        val sprtArvlSeqYn: String?,
-        val sprtTrgtMinAge: String?,
-        val sprtTrgtMaxAge: String?,
-        val sprtTrgtAgeLmtYn: String?,
-        val mrgSttsCd: String?,
-        val earnCndSeCd: String?,
-        val earnMinAmt: String?,
-        val earnMaxAmt: String?,
-        val earnEtcCn: String?,
-        val addAplyQlfcCndCn: String?,
-        val ptcpPrpTrgtCn: String?,
-        val inqCnt: String?,
-        val rgtrInstCd: String?,
-        val rgtrInstCdNm: String?,
-        val rgtrUpInstCd: String?,
-        val rgtrUpInstCdNm: String?,
-        val rgtrHghrkInstCd: String?,
-        val rgtrHghrkInstCdNm: String?,
-        val zipCd: String?,
-        val plcyMajorCd: String?,
-        val jobCd: String?,
-        val schoolCd: String?,
-        val aplyYmd: String?,
-        val frstRegDt: String?,
-        val lastMdfcnDt: String?,
-        val sbizCd: String?
+        val plcyNo: String? = null,
+        val bscPlanCycl: String? = null,
+        val bscPlanPlcyWayNo: String? = null,
+        val bscPlanFcsAsmtNo: String? = null,
+        val bscPlanAsmtNo: String? = null,
+        val pvsnInstGroupCd: String? = null,
+        val plcyPvsnMthdCd: String? = null,
+        val plcyAprvSttsCd: String? = null,
+        val plcyNm: String? = null,
+        val plcyKywdNm: String? = null,
+        val plcyExplnCn: String? = null,
+        val lclsfNm: String? = null,
+        val mclsfNm: String? = null,
+        val plcySprtCn: String? = null,
+        val sprvsnInstCd: String? = null,
+        val sprvsnInstCdNm: String? = null,
+        val sprvsnInstPicNm: String? = null,
+        val operInstCd: String? = null,
+        val operInstCdNm: String? = null,
+        val operInstPicNm: String? = null,
+        val sprtSclLmtYn: String? = null,
+        val aplyPrdSeCd: String? = null,
+        val bizPrdSeCd: String? = null,
+        val bizPrdBgngYmd: String? = null,
+        val bizPrdEndYmd: String? = null,
+        val bizPrdEtcCn: String? = null,
+        val plcyAplyMthdCn: String? = null,
+        val srngMthdCn: String? = null,
+        val aplyUrlAddr: String? = null,
+        val sbmsnDcmntCn: String? = null,
+        val etcMttrCn: String? = null,
+        val refUrlAddr1: String? = null,
+        val refUrlAddr2: String? = null,
+        val sprtSclCnt: String? = null,
+        val sprtArvlSeqYn: String? = null,
+        val sprtTrgtMinAge: String? = null,
+        val sprtTrgtMaxAge: String? = null,
+        val sprtTrgtAgeLmtYn: String? = null,
+        val mrgSttsCd: String? = null,
+        val earnCndSeCd: String? = null,
+        val earnMinAmt: String? = null,
+        val earnMaxAmt: String? = null,
+        val earnEtcCn: String? = null,
+        val addAplyQlfcCndCn: String? = null,
+        val ptcpPrpTrgtCn: String? = null,
+        val inqCnt: String? = null,
+        val rgtrInstCd: String? = null,
+        val rgtrInstCdNm: String? = null,
+        val rgtrUpInstCd: String? = null,
+        val rgtrUpInstCdNm: String? = null,
+        val rgtrHghrkInstCd: String? = null,
+        val rgtrHghrkInstCdNm: String? = null,
+        val zipCd: String? = null,
+        val plcyMajorCd: String? = null,
+        val jobCd: String? = null,
+        val schoolCd: String? = null,
+        val aplyYmd: String? = null,
+        val frstRegDt: String? = null,
+        val lastMdfcnDt: String? = null,
+        val sbizCd: String? = null
     )
-
-
 }
