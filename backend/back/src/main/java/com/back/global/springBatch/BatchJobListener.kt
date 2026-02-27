@@ -10,11 +10,12 @@ import org.springframework.stereotype.Component
 import java.time.Duration
 
 @Component
-class BatchJobListener : JobExecutionListener {
-    private val regionCache: EstateRegionCache? = null
+class BatchJobListener(
+    // 생성자 주입을 통해 실제 객체를 받아오도록 수정
+    private val regionCache: EstateRegionCache
+) : JobExecutionListener {
 
     override fun afterJob(jobExecution: JobExecution) {
-        // 종료 시간에서 시작 시간을 빼서 계산
         val start = jobExecution.startTime
         val end = jobExecution.endTime
 
@@ -27,20 +28,18 @@ class BatchJobListener : JobExecutionListener {
 
         if (jobExecution.status == BatchStatus.FAILED) {
             log.error("=== ❌ 실패 리포트 시작 ===")
-
             for (stepExecution in jobExecution.stepExecutions) {
                 if (stepExecution.status == BatchStatus.FAILED) {
-                    // 어떤 지역(Step)에서 문제가 생겼는지 출력
                     log.error("실패한 Step: {}", stepExecution.stepName)
-
-                    // 실제 에러 원인(Exception) 출력
                     log.error("에러 메시지: {}", stepExecution.failureExceptions)
                 }
             }
             log.error("========================")
         }
 
-        regionCache!!.init()
+        // 이제 regionCache는 null이 아니므로 안전하게 호출 가능합니다.
+        // !! 대신 안전하게 호출하거나 주입받은 상태 그대로 사용하세요.
+        regionCache.init()
     }
 
     companion object {
