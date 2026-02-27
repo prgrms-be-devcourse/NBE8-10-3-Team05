@@ -27,7 +27,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/spring-next-app:latest
+          tags: ghcr.io/prgrms-be-devcourse/nbe8-10-3-team05/spring-next-app:latest
 
   # ── 1. WAS 서버 1 배포 ────────────────────────────────────
   deploy-was1:
