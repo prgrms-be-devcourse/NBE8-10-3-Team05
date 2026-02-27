@@ -47,7 +47,7 @@ jobs:
         run: |
           for i in {1..10}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://${{ secrets.NGINX_HOST }}/actuator/health)
+              http://${{ secrets.WAS1_PRIVATE_IP }}:8080/actuator/health)
             if [ "$STATUS" == "200" ]; then
               echo "✅ WAS1 정상 확인!"
               exit 0
@@ -118,7 +118,7 @@ jobs:
         run: |
           for i in {1..10}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://${{ secrets.NGINX_HOST }}/actuator/health)
+              http://${{ secrets.WAS1_PRIVATE_IP }}:8080/actuator/health)
             if [ "$STATUS" == "200" ]; then
               echo "✅ WAS2 정상 확인!"
               exit 0
