@@ -45,6 +45,14 @@ resource "aws_security_group" "nginx_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # HTTPS (실제 암호화 통신용) - 이거 꼭 추가해야 함!
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # 배포/관리용 (SSH) - 키 인증 필수!
   ingress {
     from_port   = 22
@@ -120,6 +128,21 @@ resource "aws_security_group" "monitor_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+# Nginx 서버를 위한 고정 IP(EIP) 할당
+resource "aws_eip" "nginx_eip" {
+  instance = aws_instance.nginx_server.id # nginx 인스턴스에 연결
+  domain   = "vpc"
+
+  tags = {
+    Name = "nginx-fixed-ip"
+  }
+}
+
+# 할당된 고정 IP 출력 (터미널에서 바로 확인용)
+output "nginx_fixed_public_ip" {
+  value = aws_eip.nginx_eip.public_ip
 }
 
 # [DB/Cache/Search] WAS 서버와 모니터링 서버에서만 접근 허용
@@ -386,7 +409,6 @@ resource "aws_instance" "nginx_server" {
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
               sudo systemctl start docker && sudo usermod -aG docker ubuntu
 
-
               # 보안강화: SSH 비밀번호 로그인 차단 (키 인증만 허용)
               sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
               sudo sed -i 's/^#\?PermitEmptyPasswords .*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
@@ -411,35 +433,78 @@ resource "aws_instance" "nginx_server" {
 
               server {
                   listen 80;
+                  server_name gurum505.duckdns.org;
+
+                  # 1. Certbot 인증 경로 (매우 중요)
+                  location /.well-known/acme-challenge/ {
+                      root /var/www/certbot;
+                  }
 
                   # 공통 프록시 설정 (가독성을 위해 블록 밖으로 뺄 수 없으므로 각 location에 적용)
-
-                  # 1. API 요청 (Spring Boot)
+                  # 2. API 요청 (Spring Boot)
                   location /api {
                       proxy_pass http://was_backend;
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 
-                      # 무중단 배포 핵심 설정
                       proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
                       proxy_connect_timeout 5s;
                       proxy_read_timeout 60s;
                   }
 
-                  # 2. 정적 파일 및 화면 요청 (Next.js)
+                  # 3. 정적 파일 및 화면 요청 (Next.js)
                   location / {
                       proxy_pass http://was_frontend;
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 
-                      # 무중단 배포 핵심 설정
                       proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
                       proxy_connect_timeout 5s;
                       proxy_read_timeout 60s;
                   }
+
+                  # 그 외 일반 접속은 모두 HTTPS로 강제 이동 (301 리다이렉트)
+                  #location / {
+                  #    return 301 https://$host$request_uri;
+                  #}
+
+
               }
+
+              # [참고] 인증서 발급이 완료된 후, 아래의 443 서버 블록을 주석 해제하고
+              # 위 80 포트 블록의 location / 및 /api 프록시를 이쪽으로 옮기면 완벽한 HTTPS가 됩니다.
+              # server {
+              #     listen 443 ssl;
+              #     server_name gurum505.duckdns.org;
+              #     ssl_certificate /etc/letsencrypt/live/gurum505.duckdns.org/fullchain.pem;
+              #     ssl_certificate_key /etc/letsencrypt/live/gurum505.duckdns.org/privkey.pem;
+              # 공통 프록시 설정 (가독성을 위해 블록 밖으로 뺄 수 없으므로 각 location에 적용)
+#                     # 2. API 요청 (Spring Boot)
+#                     location /api {
+#                         proxy_pass http://was_backend;
+#                         proxy_set_header Host \$host;
+#                         proxy_set_header X-Real-IP \$remote_addr;
+#                         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+#
+#                         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+#                         proxy_connect_timeout 5s;
+#                         proxy_read_timeout 60s;
+#                     }
+#
+#                     # 3. 정적 파일 및 화면 요청 (Next.js)
+#                     location / {
+#                         proxy_pass http://was_frontend;
+#                         proxy_set_header Host \$host;
+#                         proxy_set_header X-Real-IP \$remote_addr;
+#                         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+#
+#                         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+#                         proxy_connect_timeout 5s;
+#                         proxy_read_timeout 60s;
+#                     }
+              # }
               EOT
 
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
@@ -447,9 +512,13 @@ resource "aws_instance" "nginx_server" {
               services:
                 nginx:
                   image: nginx:latest
-                  ports: [ "80:80" ]
+                  ports:
+                    - "80:80"
+                    - "443:443" # [수정] HTTPS용 포트 개방
                   volumes:
                     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                    - ./certbot/conf:/etc/letsencrypt  # [수정] Certbot이 발급한 인증서를 Nginx와 공유
+                    - ./certbot/www:/var/www/certbot   # [수정] Certbot의 Challenge 폴더를 Nginx와 공유
                 certbot:
                   image: certbot/certbot:latest
                   volumes:
