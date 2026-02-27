@@ -70,16 +70,19 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} "
-              docker pull gurum505/spring-next-app:v1.0 &&
-              docker stop \$(docker ps -aq) || true &&
-              docker rm \$(docker ps -aq) || true &&
+            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} << 'ENDSSH'
+              docker pull gurum505/spring-next-app:v1.0
+              CONTAINERS=$(docker ps -aq)
+              if [ -n "$CONTAINERS" ]; then
+                docker stop $CONTAINERS
+                docker rm $CONTAINERS
+              fi
               docker run -d \
                 --name app \
                 -p 8080:8080 \
                 -p 3000:3000 \
                 gurum505/spring-next-app:v1.0
-            "
+            ENDSSH
 
       # 3. WAS1 헬스체크
       - name: WAS1 헬스체크
