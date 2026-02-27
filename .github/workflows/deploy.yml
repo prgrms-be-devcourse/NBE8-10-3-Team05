@@ -2,7 +2,6 @@ name: 무중단 배포
 
 on:
   workflow_dispatch:
-    
   push:
     branches: [ main ]
 
@@ -11,6 +10,19 @@ jobs:
   deploy-was1:
     runs-on: ubuntu-latest
     steps:
+      # 0. Nginx에 WAS 접속 키 자동 등록
+      - name: Nginx에 WAS 접속 키 등록
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/.ssh
+            echo "${{ secrets.WAS_SSH_KEY }}" > ~/.ssh/my-key
+            chmod 600 ~/.ssh/my-key
+
+      # 1. WAS1 Nginx에서 제거 (WAS2만 서비스)
       - name: Nginx에서 WAS1 제거
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -18,16 +30,39 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo mkdir -p /home/ubuntu/app
+            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
             upstream was_frontend {
-              server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
             }
             upstream was_backend {
-              server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+            }
+            server {
+                listen 80;
+                location /api {
+                    proxy_pass http://was_backend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
+                location / {
+                    proxy_pass http://was_frontend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
+      # 2. WAS1 배포
       - name: WAS1 배포
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -36,15 +71,17 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} "
-              cd /home/ubuntu/app &&
-              # 1. 원격에서 최신 이미지(latest) 가져오기
-              sudo docker-compose pull &&
-              # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
-              sudo docker-compose down &&
-              # 3. 새 이미지로 다시 띄우기
-              sudo docker-compose up -d
+              docker pull gurum505/spring-next-app:v1.0 &&
+              docker stop app || true &&
+              docker rm app || true &&
+              docker run -d \
+                --name app \
+                -p 8080:8080 \
+                -p 3000:3000 \
+                gurum505/spring-next-app:v1.0
             "
 
+      # 3. WAS1 헬스체크
       - name: WAS1 헬스체크
         run: |
           for i in {1..10}; do
@@ -60,6 +97,7 @@ jobs:
           echo "❌ WAS1 헬스체크 실패"
           exit 1
 
+      # 4. WAS1 Nginx에 다시 추가
       - name: Nginx에 WAS1 복구
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -67,23 +105,57 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
             upstream was_frontend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
-              server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
             }
             upstream was_backend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
-              server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+            }
+            server {
+                listen 80;
+                location /api {
+                    proxy_pass http://was_backend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
+                location / {
+                    proxy_pass http://was_frontend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
-  # ── 2. WAS 서버 2 배포 ────────────────────────────────────
+  # ── 2. WAS 서버 2 배포 (WAS1 완료 후 순차 배포) ──────────
   deploy-was2:
     needs: deploy-was1
     runs-on: ubuntu-latest
     steps:
+      # 0. Nginx에 WAS 접속 키 자동 등록
+      - name: Nginx에 WAS 접속 키 등록
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/.ssh
+            echo "${{ secrets.WAS_SSH_KEY }}" > ~/.ssh/my-key
+            chmod 600 ~/.ssh/my-key
+
+      # 1. WAS2 Nginx에서 제거 (WAS1만 서비스)
       - name: Nginx에서 WAS2 제거
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -91,16 +163,38 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
             upstream was_frontend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
             }
             upstream was_backend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+            }
+            server {
+                listen 80;
+                location /api {
+                    proxy_pass http://was_backend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
+                location / {
+                    proxy_pass http://was_frontend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
+      # 2. WAS2 배포
       - name: WAS2 배포
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -109,15 +203,17 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} "
-              cd /home/ubuntu/app &&
-              # 1. 원격에서 최신 이미지(latest) 가져오기
-              sudo docker-compose pull &&
-              # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
-              sudo docker-compose down &&
-              # 3. 새 이미지로 다시 띄우기
-              sudo docker-compose up -d
+              docker pull gurum505/spring-next-app:v1.0 &&
+              docker stop app || true &&
+              docker rm app || true &&
+              docker run -d \
+                --name app \
+                -p 8080:8080 \
+                -p 3000:3000 \
+                gurum505/spring-next-app:v1.0
             "
 
+      # 3. WAS2 헬스체크
       - name: WAS2 헬스체크
         run: |
           for i in {1..10}; do
@@ -133,6 +229,7 @@ jobs:
           echo "❌ WAS2 헬스체크 실패"
           exit 1
 
+      # 4. WAS2 Nginx에 다시 추가
       - name: Nginx에 WAS2 복구
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -140,14 +237,35 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
             upstream was_frontend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
-              server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
             }
             upstream was_backend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
-              server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+            }
+            server {
+                listen 80;
+                location /api {
+                    proxy_pass http://was_backend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
+                location / {
+                    proxy_pass http://was_frontend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
