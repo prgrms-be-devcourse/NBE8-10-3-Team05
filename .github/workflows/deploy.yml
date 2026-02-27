@@ -72,6 +72,7 @@ jobs:
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} << ENDSSH
               docker pull gurum505/spring-next-app:v1.0
+              cd /home/ubuntu/app && sudo docker-compose down
               CONTAINERS=\$(docker ps -aq)
               if [ -n "\$CONTAINERS" ]; then
                 docker stop \$CONTAINERS
@@ -212,6 +213,7 @@ jobs:
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} << ENDSSH
               docker pull gurum505/spring-next-app:v1.0
+              cd /home/ubuntu/app && sudo docker-compose down
               CONTAINERS=\$(docker ps -aq)
               if [ -n "\$CONTAINERS" ]; then
                 docker stop \$CONTAINERS
