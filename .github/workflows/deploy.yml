@@ -30,34 +30,12 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo mkdir -p /home/ubuntu/app
-            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
-                server ${{ secrets.WAS2_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
+              server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
             }
             upstream was_backend {
-                server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
-            }
-            server {
-                listen 80;
-                location /api {
-                    proxy_pass http://was_backend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
-                location / {
-                    proxy_pass http://was_frontend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
+              server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
             }
             EOF'
             sudo docker exec nginx nginx -s reload
@@ -106,35 +84,14 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
-                server ${{ secrets.WAS1_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
-                server ${{ secrets.WAS2_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
+              server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
+              server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
             }
             upstream was_backend {
-                server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
-                server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
-            }
-            server {
-                listen 80;
-                location /api {
-                    proxy_pass http://was_backend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
-                location / {
-                    proxy_pass http://was_frontend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
+              server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
+              server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
             }
             EOF'
             sudo docker exec nginx nginx -s reload
@@ -164,33 +121,12 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
-                server ${{ secrets.WAS1_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
+              server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
             }
             upstream was_backend {
-                server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
-            }
-            server {
-                listen 80;
-                location /api {
-                    proxy_pass http://was_backend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
-                location / {
-                    proxy_pass http://was_frontend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
+              server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
             }
             EOF'
             sudo docker exec nginx nginx -s reload
@@ -247,27 +183,6 @@ jobs:
             upstream was_backend {
                 server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
                 server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
-            }
-            server {
-                listen 80;
-                location /api {
-                    proxy_pass http://was_backend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
-                location / {
-                    proxy_pass http://was_frontend;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                    proxy_connect_timeout 5s;
-                    proxy_read_timeout 60s;
-                }
             }
             EOF'
             sudo docker exec nginx nginx -s reload
