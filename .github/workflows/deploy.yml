@@ -70,12 +70,12 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} << 'ENDSSH'
+            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} << ENDSSH
               docker pull gurum505/spring-next-app:v1.0
-              CONTAINERS=$(docker ps -aq)
-              if [ -n "$CONTAINERS" ]; then
-                docker stop $CONTAINERS
-                docker rm $CONTAINERS
+              CONTAINERS=\$(docker ps -aq)
+              if [ -n "\$CONTAINERS" ]; then
+                docker stop \$CONTAINERS
+                docker rm \$CONTAINERS
               fi
               docker run -d \
                 --name app \
@@ -210,12 +210,12 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} << 'ENDSSH'
+            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} << ENDSSH
               docker pull gurum505/spring-next-app:v1.0
-              CONTAINERS=$(docker ps -aq)
-              if [ -n "$CONTAINERS" ]; then
-                docker stop $CONTAINERS
-                docker rm $CONTAINERS
+              CONTAINERS=\$(docker ps -aq)
+              if [ -n "\$CONTAINERS" ]; then
+                docker stop \$CONTAINERS
+                docker rm \$CONTAINERS
               fi
               docker run -d \
                 --name app \
