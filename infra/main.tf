@@ -354,6 +354,13 @@ resource "aws_instance" "was_servers" {
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
               sudo systemctl start docker && sudo usermod -aG docker ubuntu
 
+              # swap 설정
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
               mkdir -p /home/ubuntu/app
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
               version: '3.8'
@@ -362,6 +369,9 @@ resource "aws_instance" "was_servers" {
                   image: ${var.docker_image_name} # Docker Hub에 올려둔 이미지
                   ports: [ "8080:8080" , "3000:3000" ]
                   environment:
+                    - JAVA_OPTS=-Xms256m -Xmx512m
+                    - NODE_OPTIONS=--max-old-space-size=400
+
                     # 1. Database
                     - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
                     - SPRING_DATASOURCE_USERNAME=${var.db_username}
@@ -419,8 +429,9 @@ resource "aws_instance" "nginx_server" {
               mkdir -p /home/ubuntu/app/certbot/conf
               mkdir -p /home/ubuntu/app/certbot/www
 
-              # Nginx 설정 파일 자동 생성 (WAS 1, 2 로드밸런싱 설정)
-              cat <<EOT > /home/ubuntu/app/nginx.conf
+              # 업스트림 설정파일. git action배포시마다 바뀌는 부분
+              mkdir -p /home/ubuntu/app/nginx/conf.d
+              cat <<EOT > /home/ubuntu/app/nginx/conf.d/upstreams.inc
               upstream was_frontend {
                   server ${aws_instance.was_servers[0].private_ip}:3000 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:3000 max_fails=3 fail_timeout=30s;
@@ -430,6 +441,12 @@ resource "aws_instance" "nginx_server" {
                   server ${aws_instance.was_servers[0].private_ip}:8080 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:8080 max_fails=3 fail_timeout=30s;
               }
+              EOT
+
+              # Nginx 설정 파일 자동 생성 (WAS 1, 2 로드밸런싱 설정)
+              cat <<EOT > /home/ubuntu/app/nginx/conf.d/default.conf
+
+              include /etc/nginx/conf.d/upstreams.inc;
 
               server {
                   listen 80;
@@ -513,7 +530,7 @@ resource "aws_instance" "nginx_server" {
                     - "80:80"
                     - "443:443"
                   volumes:
-                    - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                    - ./nginx/conf.d:/etc/nginx/conf.d:ro
                     - ./certbot/conf:/etc/letsencrypt
                     - ./certbot/www:/var/www/certbot
                 certbot:
