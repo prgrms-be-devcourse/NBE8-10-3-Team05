@@ -36,16 +36,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} "
-              docker pull gurum505/spring-next-app:v1.0 &&
-              docker stop app || true &&
-              docker rm app || true &&
-              docker run -d \
-                --name app \
-                -p 8080:8080 \
-                -e SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.DB_PRIVATE_IP }}:3306/my_db \
-                -e SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_PRIVATE_IP }} \
-                -e SPRING_ELASTICSEARCH_URIS=http://${{ secrets.ES_PRIVATE_IP }}:9200 \
-                gurum505/spring-next-app:v1.0
+              cd /home/ubuntu/app &&
+              # 1. 원격에서 최신 이미지(latest) 가져오기
+              sudo docker-compose pull &&
+              # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
+              sudo docker-compose down &&
+              # 3. 새 이미지로 다시 띄우기
+              sudo docker-compose up -d
             "
 
       - name: WAS1 헬스체크
@@ -112,16 +109,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} "
-              docker pull gurum505/spring-next-app:v1.0 &&
-              docker stop app || true &&
-              docker rm app || true &&
-              docker run -d \
-                --name app \
-                -p 8080:8080 \
-                -e SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.DB_PRIVATE_IP }}:3306/my_db \
-                -e SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_PRIVATE_IP }} \
-                -e SPRING_ELASTICSEARCH_URIS=http://${{ secrets.ES_PRIVATE_IP }}:9200 \
-                gurum505/spring-next-app:v1.0
+              cd /home/ubuntu/app &&
+              # 1. 원격에서 최신 이미지(latest) 가져오기
+              sudo docker-compose pull &&
+              # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
+              sudo docker-compose down &&
+              # 3. 새 이미지로 다시 띄우기
+              sudo docker-compose up -d
             "
 
       - name: WAS2 헬스체크
