@@ -11,6 +11,9 @@ jobs:
   deploy-was1:
     runs-on: ubuntu-latest
     steps:
+      - name: Decode terraform.tfvars
+        run: echo "${{ secrets.TFVARS_BASE64 }}" | base64 -d > terraform.tfvars
+
       - name: Nginx에서 WAS1 제거
         uses: appleboy/ssh-action@v1.0.0
         with:
