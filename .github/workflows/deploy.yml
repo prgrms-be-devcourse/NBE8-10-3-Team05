@@ -6,9 +6,32 @@ on:
     branches: [ main ]
 
 jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    permissions: # GHCR에 쓰기 권한을 명시적으로 부여 (최신 보안 권장사항)
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/gurum505/spring-next-app:latest
   # ── 1. WAS 서버 1 배포 ────────────────────────────────────
   deploy-was1:
     runs-on: ubuntu-latest
+    needs: build-image
     steps:
       # 0. Nginx에 WAS 접속 키 자동 등록
       - name: Nginx에 WAS 접속 키 등록
