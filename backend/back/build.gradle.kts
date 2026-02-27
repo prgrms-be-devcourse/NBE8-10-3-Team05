@@ -160,6 +160,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
+    //mysql
+    runtimeOnly ("com.mysql:mysql-connector-j")
+
 }
 
 tasks.withType<Test> {
