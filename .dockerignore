@@ -1,0 +1,32 @@
+# --- Git & Docker ---
+.git
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# --- Node.js / Next.js (Frontend) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/npm-debug.log*
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# --- Java / Gradle (Backend) ---
+backend/back/.gradle/
+backend/back/build/
+backend/back/out/
+backend/back/bin/
+backend/back/*.class
+
+# --- OS & IDE (System) ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.sublime-project
+*.sublime-workspace
+Thumbs.db

@@ -118,3 +118,12 @@ frontend/next-env.d.ts
 
 *.log
 backend/back/logs/
+
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/*.tfvars
+infra/terraform.tfvars
+infra/my-key.pub
+infra/variables.tf
+infra/terraform.tfvars
