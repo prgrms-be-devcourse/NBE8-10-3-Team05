@@ -520,7 +520,8 @@ resource "aws_instance" "nginx_server" {
                     - "80:80"
                     - "443:443"
                   volumes:
-                    - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                    - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                    - ./nginx/conf.d:/etc/nginx/conf.d:ro
                     - ./certbot/conf:/etc/letsencrypt
                     - ./certbot/www:/var/www/certbot
                 certbot:
