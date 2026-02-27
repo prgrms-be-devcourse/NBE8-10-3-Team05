@@ -30,15 +30,37 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo mkdir -p /home/ubuntu/app
+            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
             upstream was_frontend {
-              server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
             }
             upstream was_backend {
-              server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS2_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+            }
+            server {
+                listen 80;
+                location /api {
+                    proxy_pass http://was_backend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
+                location / {
+                    proxy_pass http://was_frontend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
       # 2. WAS1 배포
       - name: WAS1 배포
@@ -49,9 +71,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS1_PRIVATE_IP }} "
-              docker pull gurum505/spring-next-app &&
-              docker stop app || true &&
-              docker rm app || true &&
+              docker pull gurum505/spring-next-app:v1.0 &&
+              docker stop \$(docker ps -aq) || true &&
+              docker rm \$(docker ps -aq) || true &&
               docker run -d \
                 --name app \
                 -p 8080:8080 \
@@ -141,15 +163,36 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo bash -c 'cat <<EOF > /home/ubuntu/app/nginx.conf
             upstream was_frontend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:3000 max_fails=3 fail_timeout=30s;
             }
             upstream was_backend {
-              server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
+                server ${{ secrets.WAS1_PRIVATE_IP }}:8080 max_fails=3 fail_timeout=30s;
+            }
+            server {
+                listen 80;
+                location /api {
+                    proxy_pass http://was_backend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
+                location / {
+                    proxy_pass http://was_frontend;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                    proxy_connect_timeout 5s;
+                    proxy_read_timeout 60s;
+                }
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
       # 2. WAS2 배포
       - name: WAS2 배포
@@ -160,9 +203,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} "
-              docker pull gurum505/spring-next-app &&
-              docker stop app || true &&
-              docker rm app || true &&
+              docker pull gurum505/spring-next-app:v1.0 &&
+              docker stop \$(docker ps -aq) || true &&
+              docker rm \$(docker ps -aq) || true &&
               docker run -d \
                 --name app \
                 -p 8080:8080 \
