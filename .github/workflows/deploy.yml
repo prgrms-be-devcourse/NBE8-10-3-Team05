@@ -39,6 +39,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/app &&
+            
+            # 원격 서버 환경에서 직접 tfvars 파일 복구
+            echo "${{ secrets.TFVARS_BASE64 }}" | base64 -d > terraform.tfvars
+            
             # 1. 원격에서 최신 이미지(latest) 가져오기
             sudo docker-compose pull &&
             # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
@@ -46,20 +50,26 @@ jobs:
             # 3. 새 이미지로 다시 띄우기
             sudo docker-compose up -d
 
-      - name: WAS1 헬스체크
-        run: |
-          for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://${{ secrets.WAS1_PRIVATE_IP }}:8080/actuator/health)
-            if [ "$STATUS" == "200" ]; then
-              echo "✅ WAS1 정상 확인!"
-              exit 0
-            fi
-            echo "대기 중... ($i/10)"
-            sleep 10
-          done
-          echo "❌ WAS1 헬스체크 실패"
-          exit 1
+      - name: WAS1 헬스체크 (Nginx 서버 내부에서 수행)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Nginx 서버 안에서 WAS1의 Private IP로 헬스체크를 수행합니다.
+            for i in {1..20}; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                http://${{ secrets.WAS1_PRIVATE_IP }}:8080/actuator/health)
+              if [ "$STATUS" == "200" ]; then
+                echo "✅ WAS1 정상 확인!"
+                exit 0
+              fi
+              echo "WAS1 대기 중... ($i/20)"
+              sleep 10
+            done
+            echo "❌ WAS1 헬스체크 실패"
+            exit 1
 
       - name: Nginx에 WAS1 복구
         uses: appleboy/ssh-action@v1.0.0
@@ -110,6 +120,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/app &&
+            
+            # 원격 서버 환경에서 직접 tfvars 파일 복구
+            echo "${{ secrets.TFVARS_BASE64 }}" | base64 -d > terraform.tfvars
+            
             # 1. 원격에서 최신 이미지(latest) 가져오기
             sudo docker-compose pull &&
             # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
@@ -117,20 +131,26 @@ jobs:
             # 3. 새 이미지로 다시 띄우기
             sudo docker-compose up -d
 
-      - name: WAS2 헬스체크
-        run: |
-          for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://${{ secrets.WAS1_PRIVATE_IP }}:8080/actuator/health)
-            if [ "$STATUS" == "200" ]; then
-              echo "✅ WAS2 정상 확인!"
-              exit 0
-            fi
-            echo "대기 중... ($i/10)"
-            sleep 10
-          done
-          echo "❌ WAS2 헬스체크 실패"
-          exit 1
+      - name: WAS2 헬스체크 (Nginx 서버 내부에서 수행)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Nginx 서버 안에서 WAS2의 Private IP로 헬스체크를 수행합니다.
+            for i in {1..20}; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                http://${{ secrets.WAS2_PRIVATE_IP }}:8080/actuator/health)
+              if [ "$STATUS" == "200" ]; then
+                echo "✅ WAS2 정상 확인!"
+                exit 0
+              fi
+              echo "WAS2 대기 중... ($i/20)"
+              sleep 10
+            done
+            echo "❌ WAS2 헬스체크 실패"
+            exit 1
 
       - name: Nginx에 WAS2 복구
         uses: appleboy/ssh-action@v1.0.0
