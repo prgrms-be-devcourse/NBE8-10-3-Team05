@@ -508,6 +508,7 @@ resource "aws_instance" "nginx_server" {
               services:
                 nginx:
                   image: nginx:latest
+                  container_name: nginx
                   ports:
                     - "80:80"
                     - "443:443"
