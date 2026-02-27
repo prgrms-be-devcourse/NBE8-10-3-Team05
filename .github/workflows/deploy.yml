@@ -31,6 +31,7 @@ jobs:
   # ── 1. WAS 서버 1 배포 ────────────────────────────────────
   deploy-was1:
     runs-on: ubuntu-latest
+    needs: build-image
     steps:
       # 0. Nginx에 WAS 접속 키 자동 등록
       - name: Nginx에 WAS 접속 키 등록
