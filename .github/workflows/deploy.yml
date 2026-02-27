@@ -21,7 +21,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
               server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
             }
@@ -29,7 +29,7 @@ jobs:
               server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
       - name: WAS1 배포
         uses: appleboy/ssh-action@v1.0.0
@@ -78,7 +78,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
               server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
               server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
@@ -88,7 +88,7 @@ jobs:
               server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
   # ── 2. WAS 서버 2 배포 ────────────────────────────────────
   deploy-was2:
@@ -102,7 +102,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
               server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
             }
@@ -110,7 +110,7 @@ jobs:
               server ${{ secrets.WAS1_PRIVATE_IP }}:8080;
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
 
       - name: WAS2 배포
         uses: appleboy/ssh-action@v1.0.0
@@ -159,7 +159,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
+            sudo docker exec nginx sh -c 'cat <<EOF > /etc/nginx/conf.d/upstreams.inc
             upstream was_frontend {
               server ${{ secrets.WAS1_PRIVATE_IP }}:3000;
               server ${{ secrets.WAS2_PRIVATE_IP }}:3000;
@@ -169,4 +169,4 @@ jobs:
               server ${{ secrets.WAS2_PRIVATE_IP }}:8080;
             }
             EOF'
-            docker exec nginx nginx -s reload
+            sudo docker exec nginx nginx -s reload
