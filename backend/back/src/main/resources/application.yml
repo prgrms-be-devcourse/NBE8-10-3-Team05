@@ -95,6 +95,11 @@ custom:
     scheme: ${ELASTICSEARCH_SCHEME:http}
     connection-timeout: ${ELASTICSEARCH_CONNECTION_TIMEOUT:5000}
     socket-timeout: ${ELASTICSEARCH_SOCKET_TIMEOUT:60000}
+  management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health
   api:
     estate:
       key: ${CUSTOM_API_ESTATE_KEY}
