@@ -34,15 +34,17 @@ jobs:
       - name: WAS1 배포
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.NGINX_HOST }}
+          # 프록시(Nginx) 설정
+          proxy_host: ${{ secrets.NGINX_HOST }}
+          proxy_username: ubuntu
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # 타겟(WAS1) 설정
+          host: ${{ secrets.WAS1_PRIVATE_IP }}
           username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # WAS1 접속용 키
           script: |
             cd /home/ubuntu/app &&
-            
-            # 원격 서버 환경에서 직접 tfvars 파일 복구
-            echo "${{ secrets.TFVARS_BASE64 }}" | base64 -d > terraform.tfvars
-            
+
             # 1. 원격에서 최신 이미지(latest) 가져오기
             sudo docker-compose pull &&
             # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
@@ -115,15 +117,17 @@ jobs:
       - name: WAS2 배포
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.NGINX_HOST }}
+          # 프록시(Nginx) 설정
+          proxy_host: ${{ secrets.NGINX_HOST }}
+          proxy_username: ubuntu
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # 타겟(WAS2) 설정
+          host: ${{ secrets.WAS2_PRIVATE_IP }}
           username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # WAS2 접속용 키
           script: |
             cd /home/ubuntu/app &&
-            
-            # 원격 서버 환경에서 직접 tfvars 파일 복구
-            echo "${{ secrets.TFVARS_BASE64 }}" | base64 -d > terraform.tfvars
-            
+
             # 1. 원격에서 최신 이미지(latest) 가져오기
             sudo docker-compose pull &&
             # 2. 기존 컨테이너와 네트워크 싹 밀기 (구버전 에러 방지 정석)
