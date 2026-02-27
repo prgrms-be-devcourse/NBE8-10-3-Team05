@@ -435,13 +435,13 @@ resource "aws_instance" "nginx_server" {
                   listen 80;
                   server_name gurum505.duckdns.org;
 
-                  # 1. Certbot 인증 경로 (매우 중요)
+                  # Certbot 인증 경로
                   location /.well-known/acme-challenge/ {
                       root /var/www/certbot;
                   }
 
-                  # 공통 프록시 설정 (가독성을 위해 블록 밖으로 뺄 수 없으므로 각 location에 적용)
-                  # 2. API 요청 (Spring Boot)
+                  # --- [A] 인증서 발급 전: 아래 location 블록들을 사용 ---
+                  # API 요청 (Spring Boot)
                   location /api {
                       proxy_pass http://was_backend;
                       proxy_set_header Host \$host;
@@ -465,45 +465,33 @@ resource "aws_instance" "nginx_server" {
                       proxy_read_timeout 60s;
                   }
 
-                  # 그 외 일반 접속은 모두 HTTPS로 강제 이동 (301 리다이렉트)
-                  #location / {
-                  #    return 301 https://$host$request_uri;
-                  #}
-
-
+                  # --- [B] 인증서 발급 후: 위 location 블록들을 주석처리하고 아래 'return 301' 주석을 푸세요 ---
+                  # return 301 https://\$host\$request_uri;
               }
 
-              # [참고] 인증서 발급이 완료된 후, 아래의 443 서버 블록을 주석 해제하고
-              # 위 80 포트 블록의 location / 및 /api 프록시를 이쪽으로 옮기면 완벽한 HTTPS가 됩니다.
+              # HTTPS 서버 (443포트) - 인증서 발급 후 아래 전체 주석을 푸세요
               # server {
               #     listen 443 ssl;
               #     server_name gurum505.duckdns.org;
+              #
               #     ssl_certificate /etc/letsencrypt/live/gurum505.duckdns.org/fullchain.pem;
               #     ssl_certificate_key /etc/letsencrypt/live/gurum505.duckdns.org/privkey.pem;
-              # 공통 프록시 설정 (가독성을 위해 블록 밖으로 뺄 수 없으므로 각 location에 적용)
-#                     # 2. API 요청 (Spring Boot)
-#                     location /api {
-#                         proxy_pass http://was_backend;
-#                         proxy_set_header Host \$host;
-#                         proxy_set_header X-Real-IP \$remote_addr;
-#                         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-#
-#                         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-#                         proxy_connect_timeout 5s;
-#                         proxy_read_timeout 60s;
-#                     }
-#
-#                     # 3. 정적 파일 및 화면 요청 (Next.js)
-#                     location / {
-#                         proxy_pass http://was_frontend;
-#                         proxy_set_header Host \$host;
-#                         proxy_set_header X-Real-IP \$remote_addr;
-#                         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-#
-#                         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-#                         proxy_connect_timeout 5s;
-#                         proxy_read_timeout 60s;
-#                     }
+              #
+              #     location /api {
+              #         proxy_pass http://was_backend;
+              #         proxy_set_header Host \$host;
+              #         proxy_set_header X-Real-IP \$remote_addr;
+              #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              #         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+              #     }
+              #
+              #     location / {
+              #         proxy_pass http://was_frontend;
+              #         proxy_set_header Host \$host;
+              #         proxy_set_header X-Real-IP \$remote_addr;
+              #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              #         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+              #     }
               # }
               EOT
 
