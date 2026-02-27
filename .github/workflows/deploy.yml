@@ -86,19 +86,24 @@ jobs:
 
       # 3. WAS1 헬스체크
       - name: WAS1 헬스체크
-        run: |
-          for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://${{ secrets.NGINX_HOST }}/actuator/health)
-            if [ "$STATUS" == "200" ]; then
-              echo "✅ WAS1 정상 확인!"
-              exit 0
-            fi
-            echo "대기 중... ($i/10)"
-            sleep 10
-          done
-          echo "❌ WAS1 헬스체크 실패"
-          exit 1
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            for i in $(seq 1 10); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                http://${{ secrets.WAS1_PRIVATE_IP }}:8080/actuator/health)
+              if [ "$STATUS" = "200" ]; then
+                echo "✅ WAS1 정상 확인!"
+                exit 0
+              fi
+              echo "대기 중... ($i/10)"
+              sleep 10
+            done
+            echo "❌ WAS1 헬스체크 실패"
+            exit 1
 
       # 4. WAS1 Nginx에 다시 추가
       - name: Nginx에 WAS1 복구
@@ -205,32 +210,40 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} "
-              docker pull gurum505/spring-next-app:v1.0 &&
-              docker stop \$(docker ps -aq) || true &&
-              docker rm \$(docker ps -aq) || true &&
+            ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no ubuntu@${{ secrets.WAS2_PRIVATE_IP }} << 'ENDSSH'
+              docker pull gurum505/spring-next-app:v1.0
+              CONTAINERS=$(docker ps -aq)
+              if [ -n "$CONTAINERS" ]; then
+                docker stop $CONTAINERS
+                docker rm $CONTAINERS
+              fi
               docker run -d \
                 --name app \
                 -p 8080:8080 \
                 -p 3000:3000 \
                 gurum505/spring-next-app:v1.0
-            "
+            ENDSSH
 
       # 3. WAS2 헬스체크
       - name: WAS2 헬스체크
-        run: |
-          for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://${{ secrets.NGINX_HOST }}/actuator/health)
-            if [ "$STATUS" == "200" ]; then
-              echo "✅ WAS2 정상 확인!"
-              exit 0
-            fi
-            echo "대기 중... ($i/10)"
-            sleep 10
-          done
-          echo "❌ WAS2 헬스체크 실패"
-          exit 1
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NGINX_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            for i in $(seq 1 10); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                http://${{ secrets.WAS2_PRIVATE_IP }}:8080/actuator/health)
+              if [ "$STATUS" = "200" ]; then
+                echo "✅ WAS2 정상 확인!"
+                exit 0
+              fi
+              echo "대기 중... ($i/10)"
+              sleep 10
+            done
+            echo "❌ WAS2 헬스체크 실패"
+            exit 1
 
       # 4. WAS2 Nginx에 다시 추가
       - name: Nginx에 WAS2 복구
