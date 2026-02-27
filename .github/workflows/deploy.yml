@@ -27,7 +27,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/gurum505/spring-next-app:latest
+          tags: ghcr.io/${{ github.repository }}/spring-next-app:latest
+
   # ── 1. WAS 서버 1 배포 ────────────────────────────────────
   deploy-was1:
     runs-on: ubuntu-latest
