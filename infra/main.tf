@@ -431,21 +431,21 @@ resource "aws_instance" "nginx_server" {
 
               # 인증서 파일공유
               CERT_DIR="/home/ubuntu/app/certbot/conf/live/${var.dns_name}"
-              mkdir -p "$CERT_DIR"
-              mkdir -p /home/ubuntu/app
-              mkdir -p /home/ubuntu/app/certbot/conf
-              mkdir -p /home/ubuntu/app/certbot/www
+              sudo mkdir -p "$CERT_DIR"
+              sudo mkdir -p /home/ubuntu/app
+              sudo mkdir -p /home/ubuntu/app/certbot/conf
+              sudo mkdir -p /home/ubuntu/app/certbot/www
 
               # 로컬 /infra/domain에 있는 인증서를 서버로 주입
-              cat <<EOT > "$CERT_DIR/fullchain.pem"
+              sudo cat <<EOT > "$CERT_DIR/fullchain.pem"
               ${file("${path.module}/domain/fullchain.pem")}
               EOT
 
-              cat <<EOT > "$CERT_DIR/privkey.pem"
+              sudo cat <<EOT > "$CERT_DIR/privkey.pem"
               ${file("${path.module}/domain/privkey.pem")}
               EOT
 
-              chmod 600 "$CERT_DIR/privkey.pem"
+              sudo chmod 600 "$CERT_DIR/privkey.pem"
 
               # 업스트림 설정파일. git action배포시마다 바뀌는 부분
               mkdir -p /home/ubuntu/app/nginx/conf.d
