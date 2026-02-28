@@ -218,18 +218,20 @@ resource "aws_instance" "db_server" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
-              sudo systemctl start docker && sudo usermod -aG docker ubuntu
+              sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
               mkdir -p /home/ubuntu/app
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
               version: '3.8'
               services:
                 mysql:
+                  restart: always
                   image: mysql:latest
                   ports: [ "3306:3306" ]
                   environment:
                     - MYSQL_ROOT_PASSWORD=${var.db_password}
                     - MYSQL_DATABASE=my_db
                 mysql-exporter:
+                  restart: always
                   image: prom/mysqld-exporter:latest
                   ports: [ "9104:9104" ]
                   environment:
@@ -249,15 +251,17 @@ resource "aws_instance" "redis_server" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
-              sudo systemctl start docker && sudo usermod -aG docker ubuntu
+              sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
               mkdir -p /home/ubuntu/app
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
               version: '3.8'
               services:
                 redis:
+                  restart: always
                   image: redis:latest
                   ports: [ "6379:6379" ]
                 redis-exporter:
+                  restart: always
                   image: oliver006/redis_exporter:latest
                   ports: [ "9121:9121" ]
                   environment:
@@ -304,6 +308,7 @@ resource "aws_instance" "es_server" {
               version: '3.8'
               services:
                 elasticsearch:
+                  restart: always
                   image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
                   container_name: elasticsearch
                   ports:
@@ -320,16 +325,15 @@ resource "aws_instance" "es_server" {
                     memlock:
                       soft: -1
                       hard: -1
-                  restart: always
 
                 elasticsearch-exporter:
+                  restart: always
                   image: prometheuscommunity/elasticsearch-exporter:latest
                   container_name: elasticsearch-exporter
                   ports:
                     - "9114:9114"
                   command:
                     - "--es.uri=http://elasticsearch:9200"
-                  restart: always
 
               volumes:
                 es-data:
@@ -352,7 +356,7 @@ resource "aws_instance" "was_servers" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
-              sudo systemctl start docker && sudo usermod -aG docker ubuntu
+              sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
 
               # swap 설정
               sudo fallocate -l 2G /swapfile
@@ -366,6 +370,7 @@ resource "aws_instance" "was_servers" {
               version: '3.8'
               services:
                 app:
+                  restart: always
                   image: ${var.docker_image_name} # Docker Hub에 올려둔 이미지
                   ports: [ "8080:8080" , "3000:3000" ]
                   environment:
@@ -417,7 +422,7 @@ resource "aws_instance" "nginx_server" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
-              sudo systemctl start docker && sudo usermod -aG docker ubuntu
+              sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
 
               # 보안강화: SSH 비밀번호 로그인 차단 (키 인증만 허용)
               sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
@@ -425,9 +430,22 @@ resource "aws_instance" "nginx_server" {
               sudo systemctl restart ssh
 
               # 인증서 파일공유
-              mkdir -p /home/ubuntu/app
-              mkdir -p /home/ubuntu/app/certbot/conf
-              mkdir -p /home/ubuntu/app/certbot/www
+              CERT_DIR="/home/ubuntu/app/certbot/conf/live/${var.dns_name}"
+              sudo mkdir -p "$CERT_DIR"
+              sudo mkdir -p /home/ubuntu/app
+              sudo mkdir -p /home/ubuntu/app/certbot/conf
+              sudo mkdir -p /home/ubuntu/app/certbot/www
+
+              # 로컬 /infra/domain에 있는 인증서를 서버로 주입
+              sudo cat <<EOT > "$CERT_DIR/fullchain.pem"
+              ${file("${path.module}/domain/fullchain.pem")}
+              EOT
+
+              sudo cat <<EOT > "$CERT_DIR/privkey.pem"
+              ${file("${path.module}/domain/privkey.pem")}
+              EOT
+
+              sudo chmod 600 "$CERT_DIR/privkey.pem"
 
               # 업스트림 설정파일. git action배포시마다 바뀌는 부분
               mkdir -p /home/ubuntu/app/nginx/conf.d
@@ -457,73 +475,48 @@ resource "aws_instance" "nginx_server" {
                       root /var/www/certbot;
                   }
 
-                  # --- [A] 인증서 발급 전: 아래 location 블록들을 사용 ---
-                  # API 요청 (Spring Boot)
+                  return 301 https://\$host\$request_uri;
+              }
+
+              server {
+                  listen 443 ssl;
+                  server_name ${var.dns_name};
+
+                  ssl_certificate /etc/letsencrypt/live/${var.dns_name}/fullchain.pem;
+                  ssl_certificate_key /etc/letsencrypt/live/${var.dns_name}/privkey.pem;
+
                   location /api {
                       proxy_pass http://was_backend;
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-
                       proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                      proxy_connect_timeout 5s;
-                      proxy_read_timeout 60s;
                   }
 
-                  # 3. 정적 파일 및 화면 요청 (Next.js)
                   location / {
                       proxy_pass http://was_frontend;
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-
                       proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-                      proxy_connect_timeout 5s;
-                      proxy_read_timeout 60s;
                   }
 
-                  # --- [B] 인증서 발급 후: 위 location 블록들을 주석처리하고 아래 'return 301' 주석을 푸세요 ---
-                  # return 301 https://\$host\$request_uri;
+                  location /grafana/ {
+                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3000/; # 모니터링 서버의 사설 IP
+                      proxy_set_header Host \$host;
+                      proxy_set_header X-Real-IP \$remote_addr;
+                      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto \$scheme;
+                  }
               }
-
-              # HTTPS 서버 (443포트) - 인증서 발급 후 아래 전체 주석을 푸세요
-              # server {
-              #     listen 443 ssl;
-              #     server_name ${var.dns_name};
-              #
-              #     ssl_certificate /etc/letsencrypt/live/${var.dns_name}/fullchain.pem;
-              #     ssl_certificate_key /etc/letsencrypt/live/${var.dns_name}/privkey.pem;
-              #
-              #     location /api {
-              #         proxy_pass http://was_backend;
-              #         proxy_set_header Host \$host;
-              #         proxy_set_header X-Real-IP \$remote_addr;
-              #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-              #         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-              #     }
-              #
-              #     location / {
-              #         proxy_pass http://was_frontend;
-              #         proxy_set_header Host \$host;
-              #         proxy_set_header X-Real-IP \$remote_addr;
-              #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-              #         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-              #     }
-              #
-              #     location /grafana/ {
-              #         proxy_pass http://${aws_instance.monitor_server.private_ip}:3000/; # 모니터링 서버의 사설 IP
-              #         proxy_set_header Host \$host;
-              #         proxy_set_header X-Real-IP \$remote_addr;
-              #         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-              #         proxy_set_header X-Forwarded-Proto \$scheme;
-              #     }
-              # }
               EOT
 
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
               version: '3.8'
               services:
+
                 nginx:
+                  restart: unless-stopped
                   image: nginx:latest
                   container_name: nginx
                   ports:
@@ -534,6 +527,7 @@ resource "aws_instance" "nginx_server" {
                     - ./certbot/conf:/etc/letsencrypt
                     - ./certbot/www:/var/www/certbot
                 certbot:
+                  restart: unless-stopped
                   image: certbot/certbot:latest
                   volumes:
                     - ./certbot/conf:/etc/letsencrypt
@@ -555,7 +549,7 @@ resource "aws_instance" "monitor_server" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
-              sudo systemctl start docker && sudo usermod -aG docker ubuntu
+              sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
               mkdir -p /home/ubuntu/app
 
               cat <<EOT > /home/ubuntu/app/prometheus.yml
@@ -577,11 +571,13 @@ resource "aws_instance" "monitor_server" {
               version: '3.8'
               services:
                 prometheus:
+                  restart: always
                   image: prom/prometheus:latest
                   ports: [ "9090:9090" ]
                   volumes:
                     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
                 grafana:
+                  restart: always
                   image: grafana/grafana:latest
                   ports: [ "3001:3000" ]
                   environment:
