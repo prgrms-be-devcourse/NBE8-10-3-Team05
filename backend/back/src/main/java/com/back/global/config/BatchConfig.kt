@@ -93,8 +93,8 @@ class BatchConfig(
     ): Job {
         return JobBuilder("fetchEstateJob", jobRepository)
             .listener(batchJobListener)
-            .start(fetchEstateApiStep)
-            .next(estateCleanupStep)
+            .start(estateCleanupStep)
+            .next(fetchEstateApiStep)
             .build()
     }
 
@@ -202,9 +202,9 @@ class BatchConfig(
         return batchStepFactory.createTaskletStep("estateCleanupStep") { _, _ ->
             // 오늘 수집되지 않은 부동산 데이터 삭제
             //val startOfToday = LocalDateTime.now().with(LocalTime.MIN)
-            val startOfToday = LocalDateTime.now().minusSeconds(1)
-            val deleted = estateRepository.deleteByModifiedDateBefore(startOfToday)
-
+            //val startOfToday = LocalDateTime.now().minusSeconds(1)
+            //val deleted = estateRepository.deleteByModifiedDateBefore(startOfToday)
+            estateRepository.deleteAllInBatch()
             RepeatStatus.FINISHED
         }
     }
