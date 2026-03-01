@@ -1,0 +1,185 @@
+version: '3.8'
+
+services:
+  # [Server 1] WAS: Spring Boot (t3.micro #1)
+#  app:
+#    build: .
+#    container_name: server-was
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      - JAVA_OPTS=-Xms256m -Xmx512m
+#      - NODE_OPTIONS=--max-old-space-size=400
+#      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/my_db
+#      - SPRING_DATA_REDIS_HOST=redis
+#      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+#    networks:
+#      - monitoring-net
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 850M # OS 점유 제외 가용 최대치
+#    depends_on:
+#      mysql: { condition: service_healthy }
+#      redis: { condition: service_healthy }
+#      elasticsearch: { condition: service_healthy }
+
+  # [Server 2] ES: Elasticsearch (t3.micro #2)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    container_name: server-es
+    environment:
+      - discovery.type=single-node
+      - network.host=0.0.0.0
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m # 요청 사항: JVM 256m
+    ports:
+      - "9200:9200"
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status.*green\\|yellow'"]
+      interval: 20s
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 850M
+
+  # [Server 3] Cache: Redis (t3.micro #3)
+  redis:
+    image: redis:latest
+    container_name: server-redis
+    command: redis-server --maxmemory 450mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 700M
+
+  # [Server 4] DB: MySQL (t3.micro #4)
+  mysql:
+    image: mysql:8.0
+    container_name: server-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+      - MYSQL_DATABASE=my_db
+    ports:
+      - "3306:3306"
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+      interval: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 800M
+
+  # [Server 5] Monitoring Server (t3.micro #5)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring-net
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - monitoring-net
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+
+  # --- Exporters (각 서버에 기생하거나 모니터링 서버에서 원격 수집하는 컴포넌트) ---
+
+  elasticsearch-exporter:
+    image: prometheuscommunity/elasticsearch-exporter:latest
+    container_name: elasticsearch-exporter
+    command: ['--es.uri=http://elasticsearch:9200']
+    ports:
+      - "9114:9114"
+    networks:
+      - monitoring-net
+    depends_on:
+      elasticsearch: { condition: service_healthy }
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - monitoring-net
+    depends_on:
+      redis: { condition: service_healthy }
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysql-exporter
+    command:
+      - "--mysqld.address=server-mysql:3306"
+      - "--mysqld.username=root:1234"
+    ports:
+      - "9104:9104"
+    networks:
+      - monitoring-net
+    depends_on:
+      mysql: { condition: service_healthy }
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # [Server 6] Nginx (t3.micro #6)
+  nginx:
+    image: nginx:latest
+    container_name: server-nginx
+    ports:
+      - "80:80"
+    networks:
+      - monitoring-net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  monitoring-net:
+    driver: bridge
+
+volumes:
+  mysql-db-data:
+  es-db-data:
+  redis-db-data:
+  grafana_data:
