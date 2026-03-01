@@ -13,19 +13,27 @@ class SyncScheduler(
     private val batchJobLauncher: BatchJobLauncher
 ) {
 
-    @Scheduled(cron = "0 30 09 * * *")
-    fun runDailyCrawling() {
-        // batchJobLauncher.testRunJob();
-        log.debug("SyncScheduler : runDailyCrawling 실행")
-        log.info("SyncScheduler : 노무사 정보 크롤링(매일)")
-        // lawyerCrawlerService.crawlAllPages();
+    // 1. 매일 새벽 02:00 - 정책(Policy) 및 부동산(Estate) 수집
+    @Scheduled(cron = "0 0 2 * * *")
+    fun runDailyJobs() {
+        log.info("Schedule: 매일 정기 수집 Job 실행 (Policy, Estate)")
+        batchJobLauncher.runPolicyJob()
+        batchJobLauncher.runEstateJob()
     }
 
-    @Scheduled(cron = "0 30 09 1 * *")
-    fun runMonthlyCrawling() {
-        log.debug("SyncScheduler : runMonthlyCrawling 실행")
-        log.info("SyncScheduler : 노무사 정보 크롤링(매달)")
-        // lawyerCrawlerService.crawlAllPages();
+    // 2. 매달 1일 새벽 04:00 - 노무사(Lawyer) 수집
+    @Scheduled(cron = "0 0 4 1 * *")
+    fun runMonthlyJobs() {
+        log.info("Schedule: 매달 정기 수집 Job 실행 (Lawyer)")
+        batchJobLauncher.runLawyerJob()
+    }
+
+    // 3. 6개월 주기 (1월, 7월 1일) 새벽 05:00 - 센터 수집 및 정책 정리
+    @Scheduled(cron = "0 0 5 1 1,7 *")
+    fun runSemiAnnualJobs() {
+        log.info("Schedule: 6개월 주기 정기 Job 실행 (Center, PolicyCleanup)")
+        batchJobLauncher.runCenterJob()
+        batchJobLauncher.runPolicyCleanupJob()
     }
 
     companion object {
