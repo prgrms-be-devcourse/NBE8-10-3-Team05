@@ -17,10 +17,7 @@ class BatchController(private val batchJobLauncher: BatchJobLauncher) {
 
         // 비동기로 실행 (배치 실행 메서드에 @Async가 붙어있어야 함)
         when (entity.lowercase()) {
-            "policy" -> {
-                batchJobLauncher.runPolicyJob()
-                batchJobLauncher.runPolicyCleanupJob() // 정책은 수집 후 클린업도 함께 테스트
-            }
+            "policy" -> batchJobLauncher.runPolicyJob()
             "estate" -> batchJobLauncher.runEstateJob()
             "lawyer" -> batchJobLauncher.runLawyerJob()
             "center" -> batchJobLauncher.runCenterJob()
