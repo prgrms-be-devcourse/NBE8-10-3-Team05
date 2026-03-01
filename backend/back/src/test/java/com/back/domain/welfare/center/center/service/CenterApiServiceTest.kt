@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Disabled
+
 internal class CenterApiServiceTest {
     @Autowired
     private lateinit var centerApiService: CenterApiService
