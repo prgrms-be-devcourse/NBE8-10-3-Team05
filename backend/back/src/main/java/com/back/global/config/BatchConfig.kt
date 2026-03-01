@@ -2,11 +2,15 @@ package com.back.global.config
 
 import com.back.domain.welfare.center.center.dto.CenterApiResponseDto.CenterDto
 import com.back.domain.welfare.center.center.entity.Center
+import com.back.domain.welfare.center.center.repository.CenterRepository
 import com.back.domain.welfare.center.lawyer.entity.Lawyer
+import com.back.domain.welfare.center.lawyer.repository.LawyerRepository
 import com.back.domain.welfare.estate.dto.EstateDto
 import com.back.domain.welfare.estate.entity.Estate
+import com.back.domain.welfare.estate.repository.EstateRepository
 import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.PolicyItem
 import com.back.domain.welfare.policy.entity.Policy
+import com.back.domain.welfare.policy.repository.PolicyRepository
 import com.back.global.springBatch.BatchJobListener
 import com.back.global.springBatch.BatchStepCrawlFactory
 import com.back.global.springBatch.BatchStepFactory
@@ -28,6 +32,8 @@ import org.springframework.batch.infrastructure.repeat.RepeatStatus
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.retry.annotation.EnableRetry
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 @Configuration
 @EnableRetry
@@ -171,22 +177,18 @@ class BatchConfig(
     @Bean
     fun policyCleanupStep(
         batchStepFactory: BatchStepFactory,
-        // policyRepository: PolicyRepository // 실제 삭제 로직을 위해 주입 필요
+        policyRepository: PolicyRepository // 실제 삭제 로직을 위해 주입 필요
     ): Step {
         return batchStepFactory.createTaskletStep(
-            "policyCleanupStep",
-            Tasklet { contribution, chunkContext ->
-                println("6개월 지난 데이터 청소 중...")
+            "policyCleanupStep"
+        ) { _, _ ->
+            val cutoffDate = LocalDateTime.now().minusMonths(6)
+            val deletedCount = policyRepository.deleteByModifiedDateBefore(cutoffDate)
 
-                // 실제 삭제 로직 예시
-                // val cutoffDate = LocalDateTime.now().minusMonths(6)
-                // val deletedCount = policyRepository.deleteByModifiedDateBefore(cutoffDate)
-                // println("$deletedCount 건의 오래된 정책이 삭제되었습니다.")
-
-                RepeatStatus.FINISHED
-            }
-        )
+            RepeatStatus.FINISHED
+        }
     }
+
 
     @Bean
     fun estateCleanupStep(
@@ -194,11 +196,10 @@ class BatchConfig(
         estateRepository: EstateRepository
     ): Step {
         return batchStepFactory.createTaskletStep("estateCleanupStep") { _, _ ->
-            // 오늘 수집되지 않은(즉, API 목록에서 사라진) 부동산 데이터 삭제
+            // 오늘 수집되지 않은 부동산 데이터 삭제
             val startOfToday = LocalDateTime.now().with(LocalTime.MIN)
             val deleted = estateRepository.deleteByModifiedDateBefore(startOfToday)
 
-            println("[Estate Cleanup] 이번 배치에서 제외된 데이터 $deleted 건 삭제 완료")
             RepeatStatus.FINISHED
         }
     }
@@ -209,11 +210,9 @@ class BatchConfig(
         centerRepository: CenterRepository
     ): Step {
         return batchStepFactory.createTaskletStep("centerCleanupStep") { _, _ ->
-            // 이번 6개월 주기 크롤링에 포함 안 된 센터 삭제
-            val startOfBatch = LocalDateTime.now().minusHours(1) // 배치 시작 전 시간 기준
+            val startOfBatch = LocalDateTime.now().minusSeconds(1)
             val deleted = centerRepository.deleteByModifiedDateBefore(startOfBatch)
 
-            println("[Center Cleanup] 더 이상 유효하지 않은 센터 $deleted 건 삭제 완료")
             RepeatStatus.FINISHED
         }
     }
@@ -224,11 +223,9 @@ class BatchConfig(
         lawyerRepository: LawyerRepository
     ): Step {
         return batchStepFactory.createTaskletStep("lawyerCleanupStep") { _, _ ->
-            // 이번 크롤링 목록에서 빠진 변호사 삭제
-            val startOfBatch = LocalDateTime.now().minusHours(1)
+            val startOfBatch = LocalDateTime.now().minusSeconds(1)
             val deleted = lawyerRepository.deleteByModifiedDateBefore(startOfBatch)
 
-            println("[Lawyer Cleanup] 퇴직 또는 정보 삭제된 변호사 $deleted 건 삭제 완료")
             RepeatStatus.FINISHED
         }
     }

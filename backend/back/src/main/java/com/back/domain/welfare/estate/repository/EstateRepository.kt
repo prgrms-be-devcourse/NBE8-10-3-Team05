@@ -4,6 +4,7 @@ import com.back.domain.welfare.estate.entity.Estate
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
+import java.time.LocalDateTime
 
 @Repository
 interface EstateRepository : JpaRepository<Estate, Int> {
@@ -26,4 +27,5 @@ interface EstateRepository : JpaRepository<Estate, Int> {
           AND (e.brtcNm LIKE %:k2% OR e.signguNm LIKE %:k2% OR e.fullAdres LIKE %:k2%)
     """)
     fun searchByKeywords(k1: String?, k2: String?): List<Estate>
+    fun deleteByModifiedDateBefore(startOfToday: LocalDateTime): Int
 }
