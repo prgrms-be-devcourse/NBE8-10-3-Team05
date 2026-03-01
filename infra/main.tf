@@ -378,7 +378,7 @@ resource "aws_instance" "was_servers" {
                     - NODE_OPTIONS=--max-old-space-size=400
 
                     # 1. Database
-                    - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+                    - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true
                     - SPRING_DATASOURCE_USERNAME=${var.db_username}
                     - SPRING_DATASOURCE_PASSWORD=${var.db_password}
                     - SPRING_DATASOURCE_DRIVER_CLASS_NAME=${var.db_driver_class_name}

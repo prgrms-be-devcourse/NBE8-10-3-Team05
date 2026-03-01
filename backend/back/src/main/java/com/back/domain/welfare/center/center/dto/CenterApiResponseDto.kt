@@ -12,7 +12,7 @@ data class CenterApiResponseDto(
     val data: List<CenterDto>
 ) {
     data class CenterDto(
-        @JsonProperty("연번")
+        @field: JsonProperty("연번")
         val id: Int?,
 
         @field: JsonProperty("시도")
