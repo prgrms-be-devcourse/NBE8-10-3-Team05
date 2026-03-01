@@ -5,6 +5,7 @@ import com.back.domain.member.member.service.MemberService
 import com.back.global.security.jwt.JwtProvider
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
@@ -13,7 +14,9 @@ import org.springframework.stereotype.Component
 @Component
 class CustomOAuth2LoginSuccessHandler(
     private val memberService: MemberService,
-    private val jwtProvider: JwtProvider
+    private val jwtProvider: JwtProvider,
+    @Value("\${app.frontend-url:http://localhost:3000}") //초기값 localhost(기존코드)
+    private val frontendUrl: String
 ) : AuthenticationSuccessHandler {
 
     override fun onAuthenticationSuccess(
@@ -30,21 +33,19 @@ class CustomOAuth2LoginSuccessHandler(
         val memberRole: Member.Role =
             oAuth2User.getAttribute<Any>("memberRole")
                 ?.let { Member.Role.valueOf(it.toString()) }
-                ?: Member.Role.USER // 기본값 유저
+                ?: Member.Role.USER
 
         val memberStatus: Member.MemberStatus =
             oAuth2User.getAttribute<Any>("memberStatus")
                 ?.let { Member.MemberStatus.valueOf(it.toString()) }
-                ?: Member.MemberStatus.PRE_REGISTERED // 여기는 socialLogin하는 곳이니 기본값 pre_
+                ?: Member.MemberStatus.PRE_REGISTERED
 
-        // 일반 로그인과 동일한 쿠키 발급 (access + refresh)
         memberService.issueLoginCookiesWithoutMemberEntity(memberId, memberRole, response)
 
-        // PRE_REGISTERED 상태면 추가정보 입력 페이지로, ACTIVE면 메인으로
         if (memberStatus == Member.MemberStatus.PRE_REGISTERED) {
-            response.sendRedirect("http://localhost:3000/social-signup")
+            response.sendRedirect("$frontendUrl/social-signup")
         } else {
-            response.sendRedirect("http://localhost:3000")
+            response.sendRedirect(frontendUrl)
         }
     }
 }
