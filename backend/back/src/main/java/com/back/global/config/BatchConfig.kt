@@ -76,10 +76,12 @@ class BatchConfig(
     fun fetchCenterJob(
         jobRepository: JobRepository,
         fetchCenterApiStep: Step,
+        centerCleanupStep: Step
     ): Job {
         return JobBuilder("fetchCenterJob", jobRepository)
             .listener(batchJobListener)
             .start(fetchCenterApiStep)
+            .next(centerCleanupStep)
             .build()
     }
 
@@ -87,10 +89,12 @@ class BatchConfig(
     fun fetchEstateJob(
         jobRepository: JobRepository,
         fetchEstateApiStep: Step,
+        estateCleanupStep: Step
     ): Job {
         return JobBuilder("fetchEstateJob", jobRepository)
             .listener(batchJobListener)
             .start(fetchEstateApiStep)
+            .next(estateCleanupStep)
             .build()
     }
 
@@ -117,7 +121,7 @@ class BatchConfig(
     }
 
     @Bean
-    fun fetchLawyerJob(jobRepository: JobRepository): Job {
+    fun fetchLawyerJob(jobRepository: JobRepository,lawyerCleanupStep: Step): Job {
         val regions = listOf(
             "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"
         )
@@ -132,7 +136,7 @@ class BatchConfig(
             jobFlow = jobFlow.next(createCrawlingStep(regions[i]))
         }
 
-        return jobFlow.listener(batchJobListener).build()
+        return jobFlow.listener(batchJobListener).next(lawyerCleanupStep).build()
     }
 
 
@@ -197,7 +201,8 @@ class BatchConfig(
     ): Step {
         return batchStepFactory.createTaskletStep("estateCleanupStep") { _, _ ->
             // 오늘 수집되지 않은 부동산 데이터 삭제
-            val startOfToday = LocalDateTime.now().with(LocalTime.MIN)
+            //val startOfToday = LocalDateTime.now().with(LocalTime.MIN)
+            val startOfToday = LocalDateTime.now().minusSeconds(1)
             val deleted = estateRepository.deleteByModifiedDateBefore(startOfToday)
 
             RepeatStatus.FINISHED
