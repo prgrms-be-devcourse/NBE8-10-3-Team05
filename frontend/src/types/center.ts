@@ -6,6 +6,8 @@ import { Page } from './common';
  */
 export interface CenterSearchRequest {
   keyword: string;
+  page?: number;
+  size?: number;
 }
 
 export interface Center {
@@ -20,6 +22,9 @@ export interface Center {
 
 export interface CenterSearchResponse {
   centerList: Center[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
 }
 
 /**
