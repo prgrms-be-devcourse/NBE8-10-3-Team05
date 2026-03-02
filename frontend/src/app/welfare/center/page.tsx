@@ -34,7 +34,7 @@ export default function CenterSearchPage() {
 
       <div className="ds-search-bar">
         <div className="ds-form-group">
-          <label className="ds-label">시/도</label>
+          <label className="ds-label">시/도/구</label>
           <input
             type="text"
             className="ds-input ds-input-inline"

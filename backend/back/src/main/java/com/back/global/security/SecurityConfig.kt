@@ -45,7 +45,7 @@ class SecurityConfig(
                         "/api/v1" + "/member/member/join"
                     )
                     .permitAll()
-                    .requestMatchers("/api/v1/auth/reissue", "/batchTest")
+                    .requestMatchers("/api/v1/auth/reissue", "/batchTest/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated()
