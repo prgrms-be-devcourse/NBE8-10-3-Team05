@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ResponseBody
 
 @Controller
 class BatchController(private val batchJobLauncher: BatchJobLauncher) {
-    @GetMapping("/batchTest/{entity}")
+    @GetMapping("/api/batchTest/{entity}")
     @ResponseBody
     fun setup(@PathVariable entity: String): String {
         log.info(">>> 사용자 요청: 배치 프로세스 가동")
