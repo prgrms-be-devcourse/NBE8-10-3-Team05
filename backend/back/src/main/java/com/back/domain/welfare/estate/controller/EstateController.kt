@@ -37,7 +37,6 @@ class EstateController(
         return EstateSearchResonseDto(estateList)
     }
 
-    // Java의 Getter 메서드 스타일을 Kotlin의 프로퍼티 스타일로 간결하게 표현
     @GetMapping("/regions")
     fun getEstateRegions(): EstateRegionResponseDto {
         return EstateRegionResponseDto(regionCache.regionList)

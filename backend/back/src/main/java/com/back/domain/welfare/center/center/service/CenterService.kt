@@ -59,7 +59,8 @@ class CenterService(
 
     @Cacheable(value = ["center"], key = "#sido + ':' + #signguNm")
     fun searchCenterList(sido: String?, signguNm: String?): List<Center> {
-        val normalizedSido = SidoNormalizer.normalizeSido(sido)
-        return centerRepository.findByAddressContaining(normalizedSido) ?: emptyList()
+        val normalizedSido = SidoNormalizer.normalizeSido2(sido)
+        val normalizedSignguNm = SidoNormalizer.normalizeSido2(signguNm)
+        return centerRepository.findAllByLocationAndAddressContaining(normalizedSido,normalizedSignguNm) ?: emptyList()
     }
 }

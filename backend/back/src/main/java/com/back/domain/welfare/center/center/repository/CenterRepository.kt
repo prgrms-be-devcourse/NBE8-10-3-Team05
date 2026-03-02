@@ -11,4 +11,6 @@ interface CenterRepository : JpaRepository<Center, Int> {
 
     fun findByAddressContaining(sido: String?): List<Center>
     fun deleteByModifiedDateBefore(startOfBatch: LocalDateTime): Int
+
+    fun findAllByLocationAndAddressContaining(normalizedSido: String, normalizedSignguNm: String): List<Center>
 }
