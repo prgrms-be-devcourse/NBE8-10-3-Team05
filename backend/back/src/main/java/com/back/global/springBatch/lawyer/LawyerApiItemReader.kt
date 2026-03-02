@@ -12,12 +12,11 @@ import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.ResourceAccessException
 import java.util.concurrent.CopyOnWriteArrayList
-@Suppress("SpringJavaInjectionPointsAutowiringInspection") //region받는걸 intelliJ가 인식하지 못함
 @Component
 @StepScope
 class LawyerApiItemReader(
     private val lawyerCrawlerService: LawyerCrawlerService,
-    @get: Value("#{stepExecutionContext['region']}")
+    @Value("#{stepExecutionContext['region']}")
     private val region: String
 ) : AbstractPagingItemReader<Lawyer>() {
 
