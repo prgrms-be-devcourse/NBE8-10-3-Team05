@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
-import org.springframework.security.config.http.SessionCreationPolicy.STATELESS
+import org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
@@ -50,14 +50,13 @@ class SecurityConfig(
                     .anyRequest()
                     .authenticated()
             }
-
             // OAuth2 로그인은 인가 요청(state)을 여러 요청에 걸쳐 검증해야 하므로
             // 기본 구현은 HttpSession을 사용함.
             // STATELESS로 설정하면 OAuth2 인증 과정이 깨지므로,
             // 로그인 과정에서만 세션을 허용하는 IF_REQUIRED로 설정.
-            // .sessionManagement(sm -> sm.sessionCreationPolicy(IF_REQUIRED))
-            .sessionManagement { sessionManagement ->
-                sessionManagement.sessionCreationPolicy(STATELESS)
+            // 주석처리되었던 부분 해제
+            .sessionManagement { sm ->
+                sm.sessionCreationPolicy(IF_REQUIRED)
             }
             .oauth2Login { oauth2 ->
                 oauth2.userInfoEndpoint { userInfo ->

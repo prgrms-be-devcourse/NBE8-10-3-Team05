@@ -110,6 +110,9 @@ custom:
       url: ${CUSTOM_API_CENTER_URL}
   jwt:
     secretKey: ${CUSTOM_JWT_SECRET_KEY}
+  cookie:
+    secure: ${COOKIE_SECURE:false}      # 기본값: false (기존값, 로컬용) / 운영: 환경변수 COOKIE_SECURE=true 로 주입
+    same-site: ${COOKIE_SAME_SITE:Lax}  # 기본값: Lax  (기존값, 로컬용) / 운영: 환경변수 COOKIE_SAME_SITE=None 로 주입
 management:
   endpoints:
     web:
