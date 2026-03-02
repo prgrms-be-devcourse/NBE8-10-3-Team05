@@ -502,7 +502,7 @@ resource "aws_instance" "nginx_server" {
                   }
 
                   location /grafana/ {
-                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3000/; # 모니터링 서버의 사설 IP
+                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3001/; # 모니터링 서버의 사설 IP
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
