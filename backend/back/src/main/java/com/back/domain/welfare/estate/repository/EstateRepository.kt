@@ -1,6 +1,7 @@
 package com.back.domain.welfare.estate.repository
 
 import com.back.domain.welfare.estate.entity.Estate
+import org.springframework.data.domain.Page
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
@@ -28,4 +29,6 @@ interface EstateRepository : JpaRepository<Estate, Int> {
     """)
     fun searchByKeywords(k1: String?, k2: String?): List<Estate>
     fun deleteByModifiedDateBefore(startOfToday: LocalDateTime): Int
+    fun findByKeywords(k1: String, k2: String, pageable: Any) : Page<Estate>
+    fun countByKeywords(k1: String, k2: String): Int
 }
