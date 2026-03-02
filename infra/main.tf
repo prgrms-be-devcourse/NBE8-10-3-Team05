@@ -429,6 +429,13 @@ resource "aws_instance" "nginx_server" {
               sudo sed -i 's/^#\?PermitEmptyPasswords .*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
               sudo systemctl restart ssh
 
+              # 스왑 2GB 설정 (t3.micro의 생명줄)
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
               # 인증서 파일공유
               CERT_DIR="/home/ubuntu/app/certbot/conf/live/${var.dns_name}"
               sudo mkdir -p "$CERT_DIR"
@@ -502,7 +509,7 @@ resource "aws_instance" "nginx_server" {
                   }
 
                   location /grafana/ {
-                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3001/; # 모니터링 서버의 사설 IP
+                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3001; # 모니터링 서버의 사설 IP
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
