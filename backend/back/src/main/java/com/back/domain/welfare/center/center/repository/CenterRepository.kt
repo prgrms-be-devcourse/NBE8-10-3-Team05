@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 
@@ -18,5 +19,5 @@ interface CenterRepository : JpaRepository<Center, Int> {
         WHERE (c.location LIKE %:k1% OR c.address LIKE %:k1%) 
           AND (c.location LIKE %:k2% OR c.address LIKE %:k2%)
     """)
-    fun findByKeywords(normalizedK1: String, normalizedK2: String, pageable: Pageable): Page<Center>
+    fun findByKeywords(@Param("k1") k1: String, @Param("k2") k2: String, pageable: Pageable): Page<Center>
 }
