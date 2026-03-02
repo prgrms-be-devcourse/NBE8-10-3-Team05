@@ -27,11 +27,6 @@ export default function EstatePage() {
     const trimmedKeyword = keyword.trim();
     const searchKeyword = trimmedKeyword ? trimmedKeyword : (sido + " " + signguNm).trim();
 
-    if (!searchKeyword && targetPage === 0) {
-      alert("검색어를 입력하거나 지역을 선택해주세요.");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
