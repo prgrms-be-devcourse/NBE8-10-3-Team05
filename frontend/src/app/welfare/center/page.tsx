@@ -5,22 +5,21 @@ import { searchCenters } from "@/api/center";
 import { Center } from "@/types/center";
 
 export default function CenterSearchPage() {
-  const [sido, setSido] = useState("");
-  const [signguNm, setSignguNm] = useState("");
+  const [keyword, setKeyword] = useState(""); // 입력창 하나로 통합
   const [centers, setCenters] = useState<Center[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
-    if (!sido || !signguNm) {
-      alert("시/도와 시/군/구를 모두 입력해주세요.");
+    if (!keyword.trim()) {
+      alert("검색어를 입력해주세요.");
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const response = await searchCenters({ sido, signguNm });
+      const response = await searchCenters({ keyword: keyword.trim() });
       setCenters(response.centerList);
     } catch (err: any) {
       setError(err.message || "검색 중 오류가 발생했습니다.");
@@ -39,23 +38,13 @@ export default function CenterSearchPage() {
           <input
             type="text"
             className="ds-input ds-input-inline"
-            placeholder="예: 서울특별시"
-            value={sido}
-            onChange={(e) => setSido(e.target.value)}
+            placeholder="예: 서울 종로"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
             style={{ width: "180px" }}
           />
         </div>
-        <div className="ds-form-group">
-          <label className="ds-label">시/군/구</label>
-          <input
-            type="text"
-            className="ds-input ds-input-inline"
-            placeholder="예: 종로구"
-            value={signguNm}
-            onChange={(e) => setSignguNm(e.target.value)}
-            style={{ width: "180px" }}
-          />
-        </div>
+
         <button onClick={handleSearch} disabled={loading} className="ds-btn ds-btn-primary">
           {loading ? "검색 중..." : "검색"}
         </button>

@@ -5,8 +5,7 @@ import { Page } from './common';
  * Request Params: sido, signguNm
  */
 export interface CenterSearchRequest {
-  sido: string;
-  signguNm: string;
+  keyword: string;
 }
 
 export interface Center {
