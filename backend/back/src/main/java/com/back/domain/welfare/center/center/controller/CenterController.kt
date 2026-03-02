@@ -14,22 +14,31 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/welfare/center")
 class CenterController(private val centerService: CenterService) {
     @GetMapping("/location")
-    fun getCenterList(@RequestParam keyword: String?): CenterSearchResponseDto {
-        // null 또는 공백 문자열 체크를 한 번에 처리
-        if (keyword.isNullOrBlank()) {
-            return CenterSearchResponseDto(centerService.searchCenterList("", ""))
-        }
+    fun getCenterList(
+        @RequestParam keyword: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int): CenterSearchResponseDto {
+        // 키워드 정규화 및 분리 (EstateController의 로직과 통일)
+        val (k1, k2) = keyword?.trim()
+            ?.split(Regex("\\s+"))
+            ?.filter { it.isNotBlank() }
+            ?.let { tokens ->
+                if (tokens.isEmpty()) "" to ""
+                else {
+                    val first = SidoNormalizer.normalizeSido(tokens[0])
+                    val second = if (tokens.size >= 2) SidoNormalizer.normalizeSido(tokens[1]) else first
+                    first to second
+                }
+            } ?: ("" to "")
 
-        // 공백으로 분리 후 유효한 키워드만 필터링
-        val keywords = keyword.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        // 서비스에서 Page 객체 받아오기
+        val centerPage = centerService.searchCenterList(k1, k2, page, size)
 
-        // 키워드 정규화 로직 (1개일 때는 동일하게, 2개 이상일 때는 각각 처리)
-        val keyword1 = SidoNormalizer.normalizeSido(keywords[0])
-        val keyword2 = if (keywords.size >= 2) SidoNormalizer.normalizeSido(keywords[1]) else keyword1
-
-        // TODO: 추후 공고 중복 필터링 로직 추가 필요
-        val centerList = centerService.searchCenterList(keyword1, keyword2)
-
-        return CenterSearchResponseDto(centerList)
+        return CenterSearchResponseDto(
+            centerList = centerPage.content,
+            totalCount = centerPage.totalElements.toInt(),
+            totalPages = centerPage.totalPages,
+            currentPage = centerPage.number
+        )
     }
 }
