@@ -221,6 +221,7 @@ resource "aws_instance" "db_server" {
   key_name      = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.data_sg.id]
   tags = { Name = "db" }
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -270,6 +271,7 @@ resource "aws_instance" "redis_server" {
   key_name      = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.data_sg.id]
   tags = { Name = "redis" }
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -300,6 +302,7 @@ resource "aws_instance" "es_server" {
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.data_sg.id]
   tags = { Name = "elasticsearch" }
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -375,11 +378,15 @@ resource "aws_instance" "was_servers" {
   key_name      = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.was_sg.id]
   tags = { Name = "was-${count.index + 1}" }
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
               sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
+
+              # GHCR 로그인
+              echo "${var.github_token}" | docker login ghcr.io -u ${var.github_username} --password-stdin
 
               # swap 설정
               sudo fallocate -l 2G /swapfile
@@ -441,6 +448,7 @@ resource "aws_instance" "nginx_server" {
   key_name      = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.nginx_sg.id]
   tags = { Name = "nginx" }
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -579,6 +587,7 @@ resource "aws_instance" "monitor_server" {
   key_name      = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.monitor_sg.id]
   tags = { Name = "monitoring" }
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -605,6 +614,9 @@ resource "aws_instance" "monitor_server" {
                     - targets:
                       - '${aws_instance.was_servers[0].private_ip}:8080'
                       - '${aws_instance.was_servers[1].private_ip}:8080'
+                  relabel_configs:
+                    - source_labels: [job]
+                      target_label: application
               EOT
 
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
