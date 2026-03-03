@@ -9,7 +9,6 @@ import org.springframework.batch.infrastructure.item.ItemProcessor
 import org.springframework.stereotype.Component
 
 @Component
-@StepScope
 class PolicyApiItemProcessor( private val policyRepository: PolicyRepository) : ItemProcessor<PolicyItem, Policy> {
     private val existingIdMap: Map<String, Int> by lazy {
         policyRepository.findAll()
