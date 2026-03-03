@@ -5,6 +5,18 @@ variable "docker_image_name" {
   default     = "root"
 }
 
+# --- github credentials ---
+variable "github_username" {
+  description = "GitHub 사용자 이름"
+  type        = string
+}
+
+variable "github_token" {
+  description = "GitHub Personal Access Token (read:packages 권한 필수)"
+  type        = string
+  sensitive   = true # 터미널 출력 시 값을 숨깁니다.
+}
+
 # --- dns ---
 variable "dns_name" {
   description = "dns 서버 주소"

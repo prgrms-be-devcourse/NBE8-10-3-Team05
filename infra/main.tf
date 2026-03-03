@@ -381,6 +381,9 @@ resource "aws_instance" "was_servers" {
               sudo apt-get update -y && sudo apt-get install -y docker.io docker-compose
               sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker ubuntu
 
+              # GHCR 로그인
+              echo "${var.github_token}" | docker login ghcr.io -u ${var.github_username} --password-stdin
+
               # swap 설정
               sudo fallocate -l 2G /swapfile
               sudo chmod 600 /swapfile
