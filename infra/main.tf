@@ -614,6 +614,9 @@ resource "aws_instance" "monitor_server" {
                     - targets:
                       - '${aws_instance.was_servers[0].private_ip}:8080'
                       - '${aws_instance.was_servers[1].private_ip}:8080'
+                  relabel_configs:
+                    - source_labels: [job]
+                      target_label: application
               EOT
 
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
