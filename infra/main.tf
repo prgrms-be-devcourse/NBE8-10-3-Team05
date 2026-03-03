@@ -237,12 +237,25 @@ resource "aws_instance" "db_server" {
                   environment:
                     - MYSQL_ROOT_PASSWORD=${var.db_password}
                     - MYSQL_DATABASE=my_db
+                  healthcheck:
+                    test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${var.db_password}"]
+                    interval: 15s
+                    timeout: 10s
+                    retries: 5
+                    start_period: 40s # 초기화 대기 시간 보장
+                  deploy:
+                    resources:
+                      limits:
+                        memory: 800M
                 mysql-exporter:
                   restart: always
                   image: prom/mysqld-exporter:latest
                   ports: [ "9104:9104" ]
                   environment:
                     - DATA_SOURCE_NAME=root:${var.db_password}@(mysql:3306)/
+                  depends_on:
+                    mysql:
+                      condition: service_healthy # MySQL이 건강해질 때까지 실행 유예
               EOT
               cd /home/ubuntu/app && docker-compose up -d
               EOF
