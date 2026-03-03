@@ -54,7 +54,9 @@ class SecurityConfig(
             // 기본 구현은 HttpSession을 사용함.
             // STATELESS로 설정하면 OAuth2 인증 과정이 깨지므로,
             // 로그인 과정에서만 세션을 허용하는 IF_REQUIRED로 설정.
-            // 주석처리되었던 부분 해제
+            // 주석처리되었던 부분 해제. 기존부분 주석처리
+            //.sessionManagement { sessionManagement ->
+            //    sessionManagement.sessionCreationPolicy(STATELESS)
             .sessionManagement { sm ->
                 sm.sessionCreationPolicy(IF_REQUIRED)
             }
