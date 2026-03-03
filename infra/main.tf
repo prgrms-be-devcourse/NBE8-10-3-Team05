@@ -32,6 +32,13 @@ resource "aws_security_group" "ssh_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitor_sg.id]
+  }
 }
 
 # [Nginx] 외부에서 들어오는 80 포트 개방
@@ -227,15 +234,33 @@ resource "aws_instance" "db_server" {
                   restart: always
                   image: mysql:latest
                   ports: [ "3306:3306" ]
+                  command:
+                    - "--mysqld.address=mysql:3306"
+                    - "--collect.info_schema.processlist"
+                    - "--collect.info_schema.innodb_metrics"
                   environment:
-                    - MYSQL_ROOT_PASSWORD=${var.db_password}
-                    - MYSQL_DATABASE=my_db
+                    # 최신 버전에서도 하위 호환성을 위해 유지하거나,
+                    # DATA_SOURCE_NAME 설정을 명시적으로 적어줍니다.
+                    - DATA_SOURCE_NAME=root:1234@(mysql:3306)/
+                  healthcheck:
+                    test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${var.db_password}"]
+                    interval: 15s
+                    timeout: 10s
+                    retries: 5
+                    start_period: 40s # 초기화 대기 시간 보장
+                  deploy:
+                    resources:
+                      limits:
+                        memory: 800M
                 mysql-exporter:
                   restart: always
                   image: prom/mysqld-exporter:latest
                   ports: [ "9104:9104" ]
                   environment:
                     - DATA_SOURCE_NAME=root:${var.db_password}@(mysql:3306)/
+                  depends_on:
+                    mysql:
+                      condition: service_healthy # MySQL이 건강해질 때까지 실행 유예
               EOT
               cd /home/ubuntu/app && docker-compose up -d
               EOF
@@ -378,7 +403,7 @@ resource "aws_instance" "was_servers" {
                     - NODE_OPTIONS=--max-old-space-size=400
 
                     # 1. Database
-                    - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+                    - SPRING_DATASOURCE_URL=jdbc:mysql://${aws_instance.db_server.private_ip}:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true
                     - SPRING_DATASOURCE_USERNAME=${var.db_username}
                     - SPRING_DATASOURCE_PASSWORD=${var.db_password}
                     - SPRING_DATASOURCE_DRIVER_CLASS_NAME=${var.db_driver_class_name}
@@ -428,6 +453,13 @@ resource "aws_instance" "nginx_server" {
               sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
               sudo sed -i 's/^#\?PermitEmptyPasswords .*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
               sudo systemctl restart ssh
+
+              # 스왑 2GB 설정 (t3.micro의 생명줄)
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
               # 인증서 파일공유
               CERT_DIR="/home/ubuntu/app/certbot/conf/live/${var.dns_name}"
@@ -502,7 +534,7 @@ resource "aws_instance" "nginx_server" {
                   }
 
                   location /grafana/ {
-                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3000/; # 모니터링 서버의 사설 IP
+                      proxy_pass http://${aws_instance.monitor_server.private_ip}:3001; # 모니터링 서버의 사설 IP
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -565,6 +597,12 @@ resource "aws_instance" "monitor_server" {
                 - job_name: 'elasticsearch'
                   static_configs:
                     - targets: ['${aws_instance.es_server.private_ip}:9114']
+                - job_name: 'spring-boot-app'
+                  metrics_path: '/actuator/prometheus'
+                  static_configs:
+                    - targets:
+                      - '${aws_instance.was_servers[0].private_ip}:8080'
+                      - '${aws_instance.was_servers[1].private_ip}:8080'
               EOT
 
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
@@ -596,13 +634,19 @@ output "nginx_public_ip" {
   description = "웹 서비스 접속 주소 (이 IP를 브라우저에 입력하세요)"
 }
 
-output "grafana_public_ip" {
+output "monitor_public_ip" {
   value = "${aws_instance.monitor_server.public_ip}:3001"
   description = "모니터링 대시보드 주소"
 }
 
-output "was_private_ips" {
-  value = aws_instance.was_servers[*].private_ip
-  description = "주요 WAS Private IP 주소"
+output "server_access_summary" {
+  value = {
+    nginx   = { public = aws_eip.nginx_eip.public_ip, private = aws_instance.nginx_server.private_ip }
+    monitor = { public = aws_instance.monitor_server.public_ip, private = aws_instance.monitor_server.private_ip }
+    was_1   = { public = aws_instance.was_servers[0].public_ip, private = aws_instance.was_servers[0].private_ip }
+    was_2   = { public = aws_instance.was_servers[1].public_ip, private = aws_instance.was_servers[1].private_ip }
+    db      = { public = aws_instance.db_server.public_ip, private = aws_instance.db_server.private_ip }
+  }
+  description = "전체 서버 IP 주소 요약표"
 }
 

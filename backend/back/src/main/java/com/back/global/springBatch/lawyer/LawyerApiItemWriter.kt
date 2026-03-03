@@ -13,6 +13,8 @@ class LawyerApiItemWriter(private val entityManagerFactory: EntityManagerFactory
     fun lawyerJpaItemWriter(): JpaItemWriter<Lawyer> {
         return JpaItemWriterBuilder<Lawyer>()
             .entityManagerFactory(entityManagerFactory)
+            // business key로 read할시 id를 새로생성
+            .usePersist(false)
             .build()
     }
 }

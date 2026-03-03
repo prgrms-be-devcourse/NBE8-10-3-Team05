@@ -19,7 +19,9 @@ class EstateRegionCache(private val estateRepository: EstateRepository) {
         // 부모 지역(Level 1) 추가
         val parents = estateRepository.findDistinctBrtcNmBy()
         parents.forEach { p ->
-            regionList.add(EstateRegionDto(p, null, 1))
+            if (!p.isNullOrBlank()) { // 부모 이름도 안전하게 체크
+                regionList.add(EstateRegionDto(p, null, 1))
+            }
         }
 
         // 자식 지역(Level 2) 추가
@@ -28,7 +30,7 @@ class EstateRegionCache(private val estateRepository: EstateRepository) {
             val parentName = c?.get(0) as? String
             val childName = c?.get(1) as? String
 
-            if (childName != null) {
+            if (!childName.isNullOrBlank()) {
                 regionList.add(EstateRegionDto(childName, parentName, 2)!!)
             }
         }

@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.ResourceAccessException
 import java.util.concurrent.CopyOnWriteArrayList
-
 @Component
 @StepScope
 class LawyerApiItemReader(
@@ -38,7 +37,7 @@ class LawyerApiItemReader(
             val data = lawyerCrawlerService.crawlEachPage(region, page + 1)
 
             // 3. 결과 추가 (null 방어)
-            data?.let {
+            data.let {
                 currentResults.addAll(it.filterNotNull())
             }
 

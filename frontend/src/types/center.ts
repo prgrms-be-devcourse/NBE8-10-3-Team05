@@ -5,8 +5,9 @@ import { Page } from './common';
  * Request Params: sido, signguNm
  */
 export interface CenterSearchRequest {
-  sido: string;
-  signguNm: string;
+  keyword: string;
+  page?: number;
+  size?: number;
 }
 
 export interface Center {
@@ -21,6 +22,9 @@ export interface Center {
 
 export interface CenterSearchResponse {
   centerList: Center[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
 }
 
 /**

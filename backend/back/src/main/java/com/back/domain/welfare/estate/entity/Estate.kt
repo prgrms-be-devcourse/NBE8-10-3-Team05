@@ -2,7 +2,10 @@ package com.back.domain.welfare.estate.entity
 
 import com.back.domain.welfare.estate.dto.EstateDto
 import jakarta.persistence.*
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.util.StringUtils
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "estate")
@@ -73,6 +76,16 @@ class Estate(
     @Column(length = 1000)
     var url: String? = null
 ) {
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    var createdDate: LocalDateTime = LocalDateTime.now() // 초기값을 주어 null 방지
+        protected set
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    var modifiedDate: LocalDateTime = LocalDateTime.now()
+        protected set
+
     constructor(dto: EstateDto) : this(
         pblancId = dto.pblancId,
         pblancNm = dto.pblancNm,

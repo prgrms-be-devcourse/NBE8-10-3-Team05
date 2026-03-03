@@ -17,7 +17,9 @@ class CenterApiItemWriter(
     fun centerJpaItemWriter(): JpaItemWriter<Center> {
         return JpaItemWriterBuilder<Center>()
             .entityManagerFactory(entityManagerFactory)
-            .usePersist(true) // 신규 데이터 저장 시 성능 최적화 (필요에 따라 설정)
+            // 신규 데이터 저장 시 성능 최적화 필요시 수정
+            // center는 api fetch시 id까지 받아오기때문에 근야 jpa merge수행
+            .usePersist(false)
             .build()
     }
 }

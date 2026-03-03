@@ -11,6 +11,9 @@ import lombok.SneakyThrows
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.cache.annotation.Cacheable
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import kotlin.math.ceil
@@ -57,9 +60,20 @@ class CenterService(
         return allCenterList
     }
 
-    @Cacheable(value = ["center"], key = "#sido + ':' + #signguNm")
-    fun searchCenterList(sido: String?, signguNm: String?): List<Center> {
-        val normalizedSido = SidoNormalizer.normalizeSido(sido)
-        return centerRepository.findByAddressContaining(normalizedSido) ?: emptyList()
+    @Cacheable(
+        value = ["centerLocationSearch"],
+        key = "#k1 + ':' + #k2 + ':p' + #page + ':s' + #size",
+        unless = "#result.content.isEmpty()"
+    )
+    fun searchCenterList(k1: String, k2: String, page: Int, size: Int): Page<Center> {
+        // 정규화 로직 (필요 시 서비스 계층에서 수행)
+        val normalizedK1 = SidoNormalizer.normalizeSido(k1)
+        val normalizedK2 = SidoNormalizer.normalizeSido(k2)
+
+        // 최신순(id 내림차순) 정렬 및 페이지네이션 설정
+        val pageable = PageRequest.of(page, size, Sort.by("id").descending())
+
+        // Repository 호출 (Page<Center> 반환)
+        return centerRepository.findByKeywords(normalizedK1, normalizedK2, pageable)
     }
 }

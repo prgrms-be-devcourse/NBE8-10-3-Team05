@@ -11,7 +11,7 @@ spring:
   datasource:
     hikari:
       auto-commit: false
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:./db_dev;MODE=MySQL}
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:./db_dev;MODE=MySQL?rewriteBatchedStatements=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:1234}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
@@ -23,6 +23,10 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: update
+      jdbc.batch_size: 500 # 100개씩 모아서 전송
+      default_batch_fetch_size: 500 # SELECT N+1을 IN절로 바꿔줌
+      order_updates: true  # 같은 테이블 업데이트끼리 묶어서 전송 효율 증대
+      batch_versioned_data: true # 버전 관리 엔티티도 배치 처리 허용
     properties:
       hibernate:
         format_sql: true
@@ -110,6 +114,9 @@ custom:
       url: ${CUSTOM_API_CENTER_URL}
   jwt:
     secretKey: ${CUSTOM_JWT_SECRET_KEY}
+  cookie:
+    secure: ${COOKIE_SECURE:false}      # 기본값: false (기존값, 로컬용) / 운영: 환경변수 COOKIE_SECURE=true 로 주입
+    same-site: ${COOKIE_SAME_SITE:Lax}  # 기본값: Lax  (기존값, 로컬용) / 운영: 환경변수 COOKIE_SAME_SITE=None 로 주입
 management:
   endpoints:
     web:

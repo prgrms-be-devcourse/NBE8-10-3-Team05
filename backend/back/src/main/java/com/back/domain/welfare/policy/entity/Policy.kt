@@ -2,6 +2,9 @@ package com.back.domain.welfare.policy.entity
 
 import com.back.domain.welfare.policy.dto.PolicyFetchResponseDto.PolicyItem
 import jakarta.persistence.*
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedDate
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "policy")
@@ -57,6 +60,16 @@ class Policy(
     @Column(columnDefinition = "TEXT")
     var rawJson: String? = null
 ) {
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    var createdDate: LocalDateTime = LocalDateTime.now() // 초기값을 주어 null 방지
+        protected set
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    var modifiedDate: LocalDateTime = LocalDateTime.now()
+        protected set
+
     companion object {
         @JvmStatic
         fun builder(): PolicyBuilder = PolicyBuilder()
