@@ -603,13 +603,19 @@ output "nginx_public_ip" {
   description = "웹 서비스 접속 주소 (이 IP를 브라우저에 입력하세요)"
 }
 
-output "grafana_public_ip" {
+output "monitor_public_ip" {
   value = "${aws_instance.monitor_server.public_ip}:3001"
   description = "모니터링 대시보드 주소"
 }
 
-output "was_private_ips" {
-  value = aws_instance.was_servers[*].private_ip
-  description = "주요 WAS Private IP 주소"
+output "server_access_summary" {
+  value = {
+    nginx   = { public = aws_eip.nginx_eip.public_ip, private = aws_instance.nginx_server.private_ip }
+    monitor = { public = aws_instance.monitor_server.public_ip, private = aws_instance.monitor_server.private_ip }
+    was_1   = { public = aws_instance.was_servers[0].public_ip, private = aws_instance.was_servers[0].private_ip }
+    was_2   = { public = aws_instance.was_servers[1].public_ip, private = aws_instance.was_servers[1].private_ip }
+    db      = { public = aws_instance.db_server.public_ip, private = aws_instance.db_server.private_ip }
+  }
+  description = "전체 서버 IP 주소 요약표"
 }
 
