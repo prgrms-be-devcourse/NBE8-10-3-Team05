@@ -33,7 +33,7 @@ class JwtAuthenticationFilter(
         || path == "/api/v1/member/member/logout"
         || path == "/api/v1/auth/reissue"
         || path == "/favicon.ico"
-        || path == "/batchTest"
+        || path.startsWith("/api/batchTest")
         || path.startsWith("/actuator")
     }
 
