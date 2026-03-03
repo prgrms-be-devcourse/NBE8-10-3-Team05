@@ -28,6 +28,8 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/prgrms-be-devcourse/nbe8-10-3-team05/spring-next-app:latest
+          cache-from: type=gha
+          cache-to: type=gha, mode=max
 
   # ── 1. WAS 서버 1 배포 ────────────────────────────────────
   deploy-was1:
