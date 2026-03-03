@@ -234,9 +234,14 @@ resource "aws_instance" "db_server" {
                   restart: always
                   image: mysql:latest
                   ports: [ "3306:3306" ]
+                  command:
+                    - "--mysqld.address=mysql:3306"
+                    - "--collect.info_schema.processlist"
+                    - "--collect.info_schema.innodb_metrics"
                   environment:
-                    - MYSQL_ROOT_PASSWORD=${var.db_password}
-                    - MYSQL_DATABASE=my_db
+                    # 최신 버전에서도 하위 호환성을 위해 유지하거나,
+                    # DATA_SOURCE_NAME 설정을 명시적으로 적어줍니다.
+                    - DATA_SOURCE_NAME=root:1234@(mysql:3306)/
                   healthcheck:
                     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${var.db_password}"]
                     interval: 15s
