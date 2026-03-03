@@ -425,6 +425,8 @@ resource "aws_instance" "was_servers" {
                     - SPRING_PROFILES_ACTIVE=prod
                     - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
                     - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
+                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx 때문에 써야함
+
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}

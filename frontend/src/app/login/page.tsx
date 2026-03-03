@@ -51,7 +51,7 @@ export default function LoginPage() {
   // 소셜 로그인 핸들러
   const handleSocialLogin = (provider: "kakao" | "naver") => {
     // 백엔드 OAuth2 엔드포인트로 리다이렉트
-    window.location.href = `http://localhost:8080/oauth2/authorization/${provider}`;
+    window.location.href = `/oauth2/authorization/${provider}`;
   };
 
   return (
