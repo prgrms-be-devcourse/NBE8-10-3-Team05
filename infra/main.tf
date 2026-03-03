@@ -32,6 +32,13 @@ resource "aws_security_group" "ssh_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitor_sg.id]
+  }
 }
 
 # [Nginx] 외부에서 들어오는 80 포트 개방
@@ -572,6 +579,12 @@ resource "aws_instance" "monitor_server" {
                 - job_name: 'elasticsearch'
                   static_configs:
                     - targets: ['${aws_instance.es_server.private_ip}:9114']
+                - job_name: 'spring-boot-app'
+                  metrics_path: '/actuator/prometheus'
+                  static_configs:
+                    - targets:
+                      - '${aws_instance.was_servers[0].private_ip}:8080'
+                      - '${aws_instance.was_servers[1].private_ip}:8080'
               EOT
 
               cat <<EOT > /home/ubuntu/app/docker-compose.yml
