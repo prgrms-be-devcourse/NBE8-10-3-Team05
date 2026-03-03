@@ -1,7 +1,10 @@
 name: 무중단 배포
 
 on:
-  workflow_run: Java 21 CI with Gradle (Main & Dev)
+  workflow_run:
+    workflows: ["Java 21 CI with Gradle (Main & Dev)"]
+    types:
+      - completed
   workflow_dispatch:
   push:
     branches: [ main ]
