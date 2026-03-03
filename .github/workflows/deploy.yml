@@ -5,9 +5,7 @@ on:
     workflows: ["Java 21 CI with Gradle (Main & Dev)"]
     types:
       - completed
-  workflow_dispatch:
-  push:
-    branches: [ main ]
+    branches: [ main ]  # main 브랜치에서 CI가 끝났을 때만 실행
 
 jobs:
   build-image:
