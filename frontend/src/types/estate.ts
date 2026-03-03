@@ -32,11 +32,14 @@ export interface EstateRegionResponse {
 }
 
 export interface EstateSearchRequest {
-  // sido: string;
-  // signguNm: string;
-    searchKeyword: string;
+  page?: number;  // 현재 몇 페이지인지 (0부터 시작)
+  size?: number;  // 한 페이지에 몇 개를 보여줄 것인지
+  searchKeyword: string;
 }
 
 export interface EstateSearchResponse {
   estateList: Estate[];
+  totalCount: number;  // 전체 아이템 개수 (화면에 "총 n건" 표시용)
+  totalPages: number;   // 전체 페이지 수 (페이지네이션 범위용)
+  currentPage: number;  // 현재 페이지 번호 (0부터 시작)
 }

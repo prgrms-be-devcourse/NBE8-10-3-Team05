@@ -45,8 +45,10 @@ class SecurityConfig(
                         "/api/v1" + "/member/member/join"
                     )
                     .permitAll()
-                    .requestMatchers("/api/v1/auth/reissue", "/batchTest")
+                    .requestMatchers("/api/v1/auth/reissue", "/batchTest/**")
                     .permitAll()
+                    .requestMatchers("/actuator/**").permitAll() // 메트릭 경로는 누구나 접근 허용
+                    .anyRequest().authenticated()
                     .anyRequest()
                     .authenticated()
             }

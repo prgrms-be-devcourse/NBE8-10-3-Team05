@@ -24,8 +24,9 @@ export async function searchCenters(
   req: CenterSearchRequest
 ): Promise<CenterSearchResponse> {
   const params = new URLSearchParams({
-    sido: req.sido,
-    signguNm: req.signguNm,
+    keyword: req.keyword,
+    page: (req.page ?? 0).toString(),
+    size: (req.size ?? 10).toString()
   });
 
   const response = await fetchWithAuth(

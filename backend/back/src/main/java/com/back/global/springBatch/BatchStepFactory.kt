@@ -3,6 +3,7 @@ package com.back.global.springBatch
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.Step
 import org.springframework.batch.core.step.builder.StepBuilder
+import org.springframework.batch.core.step.tasklet.Tasklet
 import org.springframework.batch.infrastructure.item.ItemProcessor
 import org.springframework.batch.infrastructure.item.ItemReader
 import org.springframework.batch.infrastructure.item.ItemWriter
@@ -30,6 +31,13 @@ class BatchStepFactory(
             .faultTolerant()
             .retryPolicy(retryPolicy) // 공통으로 사용하는 RetryPolicy
             .taskExecutor(taskExecutor)
+            .build()
+    }
+
+    // Tasklet 기반 Step 생성 로직
+    fun createTaskletStep(stepName: String, tasklet: Tasklet): Step {
+        return StepBuilder(stepName, jobRepository)
+            .tasklet(tasklet, transactionManager)
             .build()
     }
 }

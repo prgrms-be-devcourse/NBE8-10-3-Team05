@@ -21,7 +21,7 @@ class BatchJobListener(
 
         if (start != null && end != null) {
             val duration = Duration.between(start, end).toMillis()
-            log.info(">>> [Job ID: {}] 최종 완료", jobExecution.jobInstance.jobName)
+            log.info(">>> [Job Name: {}] 최종 완료", jobExecution.jobInstance.jobName)
             log.info(">>> 소요 시간: {}ms (약 {}초)", duration, duration / 1000.0)
             log.info(">>> 최종 상태: {}", jobExecution.status)
         }

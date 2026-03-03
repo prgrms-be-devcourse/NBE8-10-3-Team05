@@ -4,6 +4,7 @@ import com.back.domain.welfare.center.lawyer.entity.Lawyer
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import java.time.LocalDateTime
 
 interface LawyerRepository : JpaRepository<Lawyer, String> {
     fun existsByNameAndCorporation(name: String, corporation: String?): Boolean
@@ -16,5 +17,7 @@ interface LawyerRepository : JpaRepository<Lawyer, String> {
         area2: String?,
         pageable: Pageable
     ): Page<Lawyer>
+
+    fun deleteByModifiedDateBefore(startOfBatch: LocalDateTime): Int
 }
 

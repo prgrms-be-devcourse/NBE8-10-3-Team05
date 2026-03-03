@@ -19,9 +19,9 @@ export async function searchEstates(
   req: EstateSearchRequest
 ): Promise<EstateSearchResponse> {
   const params = new URLSearchParams({
-    // sido: req.sido,
-    // signguNm: req.signguNm,
-      keyword: req.searchKeyword
+    keyword: req.searchKeyword || "",
+    page: (req.page ?? 0).toString(),
+    size: (req.size ?? 10).toString()
   });
 
   const response = await fetchWithAuth(

@@ -14,34 +14,60 @@ import org.springframework.stereotype.Component
 
 @Component
 class BatchJobLauncher(
-    private val jobOperator: JobOperator, private val fetchApiJob: Job, private val fetchLawyerJob: Job
+    private val jobOperator: JobOperator,
+    private val fetchApiJob: Job,
+    private val fetchCenterJob: Job,
+    private val fetchPolicyJob: Job,
+    private val fetchEstateJob: Job,
+    private val fetchLawyerJob: Job,
+    private val policyCleanupJob: Job
 ) {
+
+    // 매일 도는 수집 Job
     @Async
-    fun runJob() {
+    fun runPolicyJob() {
+        execute(fetchPolicyJob)
+    }
+
+    // 6개월마다 도는 정리 Job
+    @Async
+    fun runPolicyCleanupJob() {
+        execute(policyCleanupJob)
+    }
+
+    // 매일 도는 수집 Job
+    @Async
+    fun runEstateJob() {
+        execute(fetchEstateJob)
+    }
+
+    // 1개월마다 도는 수집 Job
+    @Async
+    fun runLawyerJob() {
+        execute(fetchLawyerJob)
+    }
+
+    // 6개월마다 도는 수집 Job
+    @Async
+    fun runCenterJob() {
+        execute(fetchCenterJob)
+    }
+
+    @Async
+    fun execute(job: Job) {
         try {
-            log.info("배치[1/2] 실행 시작: JobName={}, time={}", fetchApiJob.name, System.currentTimeMillis())
+            log.info("배치 실행 시작: JobName={}, time={}", job.name, System.currentTimeMillis())
 
             val jobExecution = jobOperator.start(
-                fetchApiJob,
+                job,
                 JobParametersBuilder()
-                    .addString("job:", fetchApiJob.name)
+                    .addString("job:", job.name)
                     .addLong("time", System.currentTimeMillis()) // 매번 유니크하게 실행
                     .toJobParameters()
             )
 
             log.info("배치 실행 완료: JobExecutionId={}, 상태={}", jobExecution.id, jobExecution.status)
 
-            log.info("배치[2/2] 실행 시작: JobName={}, time={}", fetchLawyerJob.name, System.currentTimeMillis())
-
-            val jobExecution2 = jobOperator.start(
-                fetchLawyerJob,
-                JobParametersBuilder()
-                    .addString("job:", fetchLawyerJob.name)
-                    .addLong("time", System.currentTimeMillis()) // 매번 유니크하게 실행
-                    .toJobParameters()
-            )
-
-            log.info("배치 실행 완료: JobExecutionId={}, 상태={}", jobExecution2.id, jobExecution2.status)
         } catch (e: InvalidJobParametersException) {
             log.error("파라미터가 유효하지 않음: {}", e.message, e)
         } catch (e: JobExecutionAlreadyRunningException) {

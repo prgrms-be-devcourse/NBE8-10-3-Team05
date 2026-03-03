@@ -6,6 +6,9 @@ import com.back.domain.welfare.estate.entity.Estate
 import com.back.domain.welfare.estate.repository.EstateRepository
 import org.slf4j.LoggerFactory
 import org.springframework.cache.annotation.Cacheable
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import kotlin.math.ceil
@@ -60,8 +63,13 @@ class EstateService(
         }
     }
 
-    @Cacheable(value = ["estate"], key = "#keyword1 + ':' + #keyword2")
-    fun searchEstateLocation(keyword1: String?, keyword2: String?): List<Estate> {
-        return estateRepository.searchByKeywords(keyword1, keyword2) ?: emptyList()
+    @Cacheable(
+        value = ["estateLocationSearch"],
+        key = "#k1 + ':' + #k2 + ':p' + #page + ':s' + #size",
+        unless = "#result.content.isEmpty()"
+    )
+    fun searchEstateLocation(k1: String, k2: String, page: Int, size: Int): Page<Estate> {
+        val pageable = PageRequest.of(page, size, Sort.by("id").descending())
+        return estateRepository.findByKeywords(k1, k2, pageable)
     }
 }

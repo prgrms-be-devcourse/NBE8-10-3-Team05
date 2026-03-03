@@ -4,6 +4,7 @@ import com.back.domain.welfare.policy.entity.Policy
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
+import java.time.LocalDateTime
 
 @Repository
 interface PolicyRepository : JpaRepository<Policy, Int> {
@@ -12,4 +13,5 @@ interface PolicyRepository : JpaRepository<Policy, Int> {
 
     @Query("select p.plcyNo from Policy p where p.plcyNo in :plcyNos")
     fun findExistingPlcyNos(plcyNos: Set<String>): Set<String>
+    fun deleteByModifiedDateBefore(cutoffDate: LocalDateTime): Int
 }

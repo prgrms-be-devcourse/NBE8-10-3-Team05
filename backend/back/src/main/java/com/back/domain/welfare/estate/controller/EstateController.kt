@@ -18,26 +18,33 @@ class EstateController(
 ) {
 
     @GetMapping("/location")
-    fun getEstateLocation(@RequestParam keyword: String?): EstateSearchResonseDto {
-        // null 또는 공백 문자열 체크를 한 번에 처리
-        if (keyword.isNullOrBlank()) {
-            return EstateSearchResonseDto(estateService.searchEstateLocation("", ""))
-        }
+    fun getEstateLocation(
+        @RequestParam keyword: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int): EstateSearchResonseDto {
 
-        // 공백으로 분리 후 유효한 키워드만 필터링
-        val keywords = keyword.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
-
-        // 키워드 정규화 로직 (1개일 때는 동일하게, 2개 이상일 때는 각각 처리)
-        val keyword1 = SidoNormalizer.normalizeSido(keywords[0])
-        val keyword2 = if (keywords.size >= 2) SidoNormalizer.normalizeSido(keywords[1]) else keyword1
+        val (k1, k2) = keyword?.trim()
+            ?.split(Regex("\\s+"))
+            ?.filter { it.isNotBlank() }
+            ?.let { tokens ->
+                if (tokens.isEmpty()) "" to ""
+                else {
+                    val first = SidoNormalizer.normalizeSido(tokens[0])
+                    val second = if (tokens.size >= 2) SidoNormalizer.normalizeSido(tokens[1]) else first
+                    first to second
+                }
+            } ?: ("" to "")
 
         // TODO: 추후 공고 중복 필터링 로직 추가 필요
-        val estateList = estateService.searchEstateLocation(keyword1, keyword2)
+        val estatePage = estateService.searchEstateLocation(k1,k2,page,size)
 
-        return EstateSearchResonseDto(estateList)
+        return EstateSearchResonseDto(
+            estatePage.content,
+            estatePage.totalElements.toInt(),
+            estatePage.totalPages,
+            estatePage.number)
     }
 
-    // Java의 Getter 메서드 스타일을 Kotlin의 프로퍼티 스타일로 간결하게 표현
     @GetMapping("/regions")
     fun getEstateRegions(): EstateRegionResponseDto {
         return EstateRegionResponseDto(regionCache.regionList)
