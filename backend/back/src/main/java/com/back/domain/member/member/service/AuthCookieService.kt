@@ -1,18 +1,26 @@
 package com.back.domain.member.member.service
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
 import java.time.Duration
 
+//vercel에서 ec2로 토큰을 전송하기 위해 COOKIE_SECURE=true, COOKIE_SAME_SITE=None 설정해야함
+//기존 코드가 최대한 유지되도록 yml설정값으로 변경하고, yml기본값은 기존대로 false, Lax 설정
+//vercel -> ec2 환경에서는 백엔드 배포 시 환경변수 설정 필요 (true, None)
 @Service
-class AuthCookieService {
+class AuthCookieService(
+    @Value("\${custom.cookie.secure}")    private val secureCookie: Boolean,
+    @Value("\${custom.cookie.same-site}") private val sameSite: String
+) {
+
 
     fun accessCookie(token: String, maxAge: Duration): String =
         ResponseCookie.from("accessToken", token)
             .httpOnly(true)
-            .secure(false) // TODO: 추후 true로 변경
+            .secure(secureCookie)
             .path("/")
-            .sameSite("Lax") // TODO: 추후 배포시에는 None + secure(true)로 바꿔야 할 수 있음
+            .sameSite(sameSite)
             .maxAge(maxAge)
             .build()
             .toString()
@@ -20,9 +28,9 @@ class AuthCookieService {
     fun refreshCookie(raw: String, maxAge: Duration): String =
         ResponseCookie.from("refreshToken", raw)
             .httpOnly(true)
-            .secure(false) // TODO: 추후 true로 변경
+            .secure(secureCookie)
             .path("/api/v1/auth/reissue")
-            .sameSite("Lax") // TODO: 추후 배포시에는 None + secure(true)로 바꿔야 할 수 있음
+            .sameSite(sameSite)
             .maxAge(maxAge)
             .build()
             .toString()
@@ -31,9 +39,9 @@ class AuthCookieService {
         if (name == "refreshToken") {
             return ResponseCookie.from(name, "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(secureCookie)
                 .path("/api/v1/auth/reissue")
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .maxAge(Duration.ZERO)
                 .build()
                 .toString()
@@ -41,9 +49,9 @@ class AuthCookieService {
 
         return ResponseCookie.from(name, "")
             .httpOnly(true)
-            .secure(false) // TODO: 추후 true로 변경
+            .secure(secureCookie)
             .path("/")
-            .sameSite("Lax") // TODO: 추후 배포시에는 None + secure(true)로 바꿔야 할 수 있음
+            .sameSite(sameSite)
             .maxAge(Duration.ZERO)
             .build()
             .toString()
