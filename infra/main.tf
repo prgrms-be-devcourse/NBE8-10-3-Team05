@@ -425,8 +425,10 @@ resource "aws_instance" "was_servers" {
                     - SPRING_PROFILES_ACTIVE=prod
                     - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
                     - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
-                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx https 잡는 역할
-
+                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
+                    - SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER=x-forwarded-proto # X-Forwarded-Proto(http/https) 헤더를 읽어 프로토콜 결정
+                    - CUSTOM_COOKIE_SECURE=true
+                    - CUSTOM_COOKIE_SAME_SITE=None
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}
@@ -532,6 +534,7 @@ resource "aws_instance" "nginx_server" {
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                       proxy_set_header X-Forwarded-Proto \$scheme;
+                      proxy_set_header X-Forwarded-Port \$server_port;
                       proxy_set_header X-Forwarded-Port 443;
                   }
 
@@ -542,6 +545,7 @@ resource "aws_instance" "nginx_server" {
                       proxy_set_header X-Real-IP \$remote_addr;
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                       proxy_set_header X-Forwarded-Proto \$scheme;
+                      proxy_set_header X-Forwarded-Port \$server_port;
                       proxy_set_header X-Forwarded-Port 443;
                   }
 
