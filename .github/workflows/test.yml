@@ -70,7 +70,7 @@ jobs:
           exit 1
 
       - name: Test with Gradle6
-        if: contains(toJson(github.event), '[skip test]')
+        if: "!contains(github.ref, 'hotfix')"
         run: ./gradlew test --build-cache --no-daemon
         working-directory: ./backend/back
         env:
