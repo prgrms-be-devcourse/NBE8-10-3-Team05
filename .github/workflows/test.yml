@@ -39,11 +39,6 @@ jobs:
           discovery.type: single-node
           xpack.security.enabled: "false"
           ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-        options: >-
-          --health-cmd "curl -s http://localhost:9200/_cluster/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
           
 
     steps:
@@ -72,20 +67,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-v3-
 
-#       image 다운시 healthcheck 넣는것으로 대체
-#      - name: Wait for Elasticsearch to be ready
-#        run: |
-#          echo "Waiting for Elasticsearch to be ready..."
-#          for i in {1..30}; do
-#            if curl -f http://localhost:9200/_cluster/health > /dev/null 2>&1; then
-#              echo "Elasticsearch is ready!"
-#              exit 0
-#            fi
-#            echo "Waiting... ($i/30)"
-#            sleep 2
-#          done
-#          echo "Elasticsearch did not become ready in time"
-#          exit 1
+      - name: Wait for Elasticsearch to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -s http://localhost:9200/_cluster/health | grep -q 'status'; then
+            echo "Elasticsearch is ready!"
+            exit 0
+            fi
+            echo "Waiting for ES... ($i/60)"
+            sleep 1 # 1초마다 체크해서 준비되자마자 바로 다음 단계로!
+          done
+          exit 1
 
       - name: Test with Gradle6
         run: ./gradlew test --build-cache
