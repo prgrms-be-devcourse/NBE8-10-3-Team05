@@ -73,8 +73,9 @@ logging:
     com.back: info
     #org.springframework.batch: DEBUG
     #org.springframework.retry: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.security.oauth2: DEBUG
+    org.springframework.security: TRACE
+    org.springframework.security.web.authentication: TRACE
+    org.springframework.security.oauth2: TRACE
   file:
     name: logs/current-log.log
   logback:
