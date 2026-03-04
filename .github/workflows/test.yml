@@ -3,8 +3,16 @@ name: Java 21 CI with Gradle (Main & Dev)
 on:
   push:
     branches: [ "main", "dev" ]
+    paths:
+      - 'backend/back/src/**'
+      - 'backend/back/build.gradle*'
+      - 'Dockerfile'
   pull_request:
     branches: [ "main", "dev" ]
+    paths:
+      - 'backend/back/src/**'
+      - 'backend/back/build.gradle*'
+      - 'Dockerfile'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }} # 커밋이 짧은 시간안에 몰려도 최신 커밋에 대해서만 액션이 수행되도록
   cancel-in-progress: false # 기존에 시작된 작업은 새 커밋이 들어왔다고 해서 바로 끄지 않고 끝날때까지 대기
@@ -22,17 +30,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2 # 또는 oss 버전
         ports:
           - 9200:9200
         env:
           discovery.type: single-node
           xpack.security.enabled: "false"
           ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-        options: >-
-          --ulimit nofile=65536:65536
           
 
     steps:
@@ -49,34 +55,23 @@ jobs:
         with:
           build-root-directory: ./backend/back
           cache-encryption-key: "force-refresh-v2"
-          cache-disabled: true
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-v3-${{ hashFiles('backend/back/gradle/wrapper/gradle-wrapper.properties') }}-${{ hashFiles('backend/back/**/*.gradle*', 'backend/back/gradle.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-v3-
+          cache-disabled: false
 
       - name: Wait for Elasticsearch to be ready
         run: |
-          echo "Waiting for Elasticsearch to be ready..."
-          for i in {1..30}; do
-            if curl -f http://localhost:9200/_cluster/health > /dev/null 2>&1; then
-              echo "Elasticsearch is ready!"
-              exit 0
+          for i in {1..60}; do
+            if curl -s http://localhost:9200/_cluster/health | grep -q 'status'; then
+            echo "Elasticsearch is ready!"
+            exit 0
             fi
-            echo "Waiting... ($i/30)"
-            sleep 2
+            echo "Waiting for ES... ($i/60)"
+            sleep 1 # 1초마다 체크해서 준비되자마자 바로 다음 단계로!
           done
-          echo "Elasticsearch did not become ready in time"
           exit 1
 
       - name: Test with Gradle6
-        run: ./gradlew test --build-cache
+        if: contains(toJson(github.event), '[skip test]')
+        run: ./gradlew test --build-cache --no-daemon
         working-directory: ./backend/back
         env:
           SPRING_CACHE_TYPE: none

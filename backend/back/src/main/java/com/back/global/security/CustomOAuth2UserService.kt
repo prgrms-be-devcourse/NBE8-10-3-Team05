@@ -21,6 +21,7 @@ class CustomOAuth2UserService(
     @Throws(OAuth2AuthenticationException::class)
     override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
         val oAuth2User = super.loadUser(userRequest)
+        println(">>> OAuth2 서비스 진입: clientRegistration=${userRequest.clientRegistration.registrationId}")
 
         // 카카오 id (yml에서 user-name-attribute: id 설정했으니 name = id)
         val kakaoId = oAuth2User.name // 예: "47121"
@@ -46,6 +47,9 @@ class CustomOAuth2UserService(
 
         // 권한은 최소 USER로 넣어도 되고, 비워도 되는데
         // 일반적으로는 ROLE_USER 넣는 게 디버깅에 편함
+
+        println(">>> DB 처리 완료: memberId=${member.id}, role=${member.role}")
+
         return DefaultOAuth2User(
             listOf(SimpleGrantedAuthority("ROLE_USER")),
             attributes,

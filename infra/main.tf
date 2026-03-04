@@ -425,8 +425,10 @@ resource "aws_instance" "was_servers" {
                     - SPRING_PROFILES_ACTIVE=prod
                     - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
                     - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
-                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx 때문에 써야함
-
+                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
+                    - SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER=x-forwarded-proto # X-Forwarded-Proto(http/https) 헤더를 읽어 프로토콜 결정
+                    - CUSTOM_COOKIE_SECURE=true
+                    - CUSTOM_COOKIE_SAME_SITE=None
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}
@@ -524,6 +526,28 @@ resource "aws_instance" "nginx_server" {
 
                   ssl_certificate /etc/letsencrypt/live/${var.dns_name}/fullchain.pem;
                   ssl_certificate_key /etc/letsencrypt/live/${var.dns_name}/privkey.pem;
+
+                  # OAuth2 로그인 시작 경로 전달
+                  location /oauth2 {
+                      proxy_pass http://was_backend; # WAS의 사설 IP와 포트. 로드밸런싱적용된
+                      proxy_set_header Host \$host;
+                      proxy_set_header X-Real-IP \$remote_addr;
+                      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto \$scheme;
+                      proxy_set_header X-Forwarded-Port \$server_port;
+                      proxy_set_header X-Forwarded-Port 443;
+                  }
+
+                # 카카오 인증 후 콜백 경로 (/login/oauth2/code/kakao) 처리
+                  location /login/oauth2 {
+                      proxy_pass http://was_backend;
+                      proxy_set_header Host \$host;
+                      proxy_set_header X-Real-IP \$remote_addr;
+                      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto \$scheme;
+                      proxy_set_header X-Forwarded-Port \$server_port;
+                      proxy_set_header X-Forwarded-Port 443;
+                  }
 
                   location /api {
                       proxy_pass http://was_backend;
@@ -666,3 +690,28 @@ output "server_access_summary" {
   description = "전체 서버 IP 주소 요약표"
 }
 
+resource "null_resource" "post_deploy_update" {
+  # EIP가 할당/변경될 때마다 실행되도록 트리거 설정
+  triggers = {
+    eip_ip = aws_eip.nginx_eip.public_ip
+    was1_ip  = aws_instance.was_servers[0].private_ip
+    was2_ip  = aws_instance.was_servers[1].private_ip
+  }
+
+  provisioner "local-exec" {
+    command = "chmod +x ./update_infrastructure.sh && bash ./update_infrastructure.sh"
+
+    environment = {
+      DUCKDNS_DOMAIN = var.dns_name       # 본인의 DuckDNS 도메인 (예: gurum505)
+      DUCKDNS_TOKEN  = var.dns_token    # DuckDNS 토큰
+
+      GH_REPO        = var.github_repo        # GitHub 저장소 (예: sayhojeong505/my-project)
+      NGINX_HOST    = aws_eip.nginx_eip.public_ip           # GitHub에 저장될 시크릿 이름
+      WAS1_PRIVATE_IP = aws_instance.was_servers[0].private_ip
+      WAS2_PRIVATE_IP = aws_instance.was_servers[1].private_ip
+    }
+  }
+
+  # EIP와 Nginx 인스턴스가 완전히 준비된 후 실행
+  depends_on = [aws_eip.nginx_eip, aws_instance.nginx_server]
+}

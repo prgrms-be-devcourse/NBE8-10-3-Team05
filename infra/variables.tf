@@ -6,6 +6,11 @@ variable "docker_image_name" {
 }
 
 # --- github credentials ---
+variable "github_repo" {
+  description = "GitHub repo"
+  type        = string
+}
+
 variable "github_username" {
   description = "GitHub 사용자 이름"
   type        = string
@@ -21,7 +26,12 @@ variable "github_token" {
 variable "dns_name" {
   description = "dns 서버 주소"
   type        = string
-  default     = "root"
+}
+
+variable "dns_token" {
+  description = "duckdns token"
+  type        = string
+  sensitive   = true
 }
 
 # --- Database Credentials ---

@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 @Configuration
 class WebMvcConfig : WebMvcConfigurer {
     override fun addCorsMappings(registry: CorsRegistry) {
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
             .allowedOrigins("http://localhost:3000", "https://nbe8-10-3-team05-frontend.vercel.app","https://nbe8-10-3-team05.duckdns.org") //vercel(프론트) 허용
             .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH")
             .allowedHeaders("*")
