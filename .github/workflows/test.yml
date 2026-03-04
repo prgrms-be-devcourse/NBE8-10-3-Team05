@@ -30,9 +30,9 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3 # 또는 oss 버전
         ports:
           - 9200:9200
         env:
@@ -40,7 +40,10 @@ jobs:
           xpack.security.enabled: "false"
           ES_JAVA_OPTS: "-Xms512m -Xmx512m"
         options: >-
-          --ulimit nofile=65536:65536
+          --health-cmd "curl -s http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
           
 
     steps:
@@ -69,19 +72,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-v3-
 
-      - name: Wait for Elasticsearch to be ready
-        run: |
-          echo "Waiting for Elasticsearch to be ready..."
-          for i in {1..30}; do
-            if curl -f http://localhost:9200/_cluster/health > /dev/null 2>&1; then
-              echo "Elasticsearch is ready!"
-              exit 0
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 2
-          done
-          echo "Elasticsearch did not become ready in time"
-          exit 1
+#       image 다운시 healthcheck 넣는것으로 대체
+#      - name: Wait for Elasticsearch to be ready
+#        run: |
+#          echo "Waiting for Elasticsearch to be ready..."
+#          for i in {1..30}; do
+#            if curl -f http://localhost:9200/_cluster/health > /dev/null 2>&1; then
+#              echo "Elasticsearch is ready!"
+#              exit 0
+#            fi
+#            echo "Waiting... ($i/30)"
+#            sleep 2
+#          done
+#          echo "Elasticsearch did not become ready in time"
+#          exit 1
 
       - name: Test with Gradle6
         run: ./gradlew test --build-cache
