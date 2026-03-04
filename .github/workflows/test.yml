@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip test]')"
+
     services:
       redis:
         image: redis
@@ -70,6 +70,7 @@ jobs:
           exit 1
 
       - name: Test with Gradle6
+        if: "!contains(github.event.head_commit.message, '[skip test]')"
         run: ./gradlew test --build-cache --no-daemon
         working-directory: ./backend/back
         env:
