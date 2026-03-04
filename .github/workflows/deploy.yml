@@ -18,6 +18,11 @@ jobs:
       packages: write
       contents: read
     steps:
+      - name: Print workflow_run info
+        run: |
+          echo "conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "event: ${{ github.event.workflow_run.event }}"
+          echo "branch: ${{ github.event.workflow_run.head_branch }}"
       - name: Checkout code
         uses: actions/checkout@v4
 
