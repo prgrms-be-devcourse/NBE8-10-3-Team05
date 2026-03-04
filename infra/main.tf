@@ -425,10 +425,11 @@ resource "aws_instance" "was_servers" {
                     - SPRING_PROFILES_ACTIVE=prod
                     - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
                     - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
-                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
+                    - SERVER_FORWARD_HEADERS_STRATEGY=framework #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
+                    - SERVER_FORWARD_HEADER_STRATEGY=framework
                     - SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER=x-forwarded-proto # X-Forwarded-Proto(http/https) 헤더를 읽어 프로토콜 결정
                     - CUSTOM_COOKIE_SECURE=true
-                    - CUSTOM_COOKIE_SAME_SITE=None
+                    - CUSTOM_COOKIE_SAME_SITE=lax
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}

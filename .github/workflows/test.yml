@@ -71,7 +71,7 @@ jobs:
 
       - name: Test with Gradle6
         if: "!contains(github.ref, 'hotfix')"
-        run: ./gradlew test --build-cache --no-daemon
+        run: ./gradlew test --build-cache
         working-directory: ./backend/back
         env:
           SPRING_CACHE_TYPE: none
