@@ -430,6 +430,8 @@ resource "aws_instance" "was_servers" {
                     - SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER=x-forwarded-proto # X-Forwarded-Proto(http/https) 헤더를 읽어 프로토콜 결정
                     - CUSTOM_COOKIE_SECURE=true
                     - CUSTOM_COOKIE_SAME_SITE=lax
+                    - SPRING_SESSION_STORE_TYPE=redis # 이제부터 세션 저장소는 Redis를
+                    - SPRING_DATA_REDIS_HOST=${aws_instance.redis_server.private_ip}
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}
