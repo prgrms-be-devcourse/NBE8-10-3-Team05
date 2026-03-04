@@ -4,11 +4,12 @@ on:
   workflow_run:
     workflows: ["Java 21 CI with Gradle (Main & Dev)"]
     types:
-      - completed
+      - completed # workflow_run은 CI가 실패해도 일단 호출
     branches: [ main ]  # main 브랜치에서 CI가 끝났을 때만 실행
 
 jobs:
   build-image:
+    if: ${{ github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions: # GHCR에 쓰기 권한을 명시적으로 부여 (최신 보안 권장사항)
       packages: write
