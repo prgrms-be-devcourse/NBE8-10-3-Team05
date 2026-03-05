@@ -32,13 +32,6 @@ resource "aws_security_group" "ssh_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.monitor_sg.id]
-  }
 }
 
 # [Nginx] 외부에서 들어오는 80 포트 개방
@@ -423,12 +416,14 @@ resource "aws_instance" "was_servers" {
                     # 3. Application Profiles & Security
                     # 기본값이 dev이기때문에 prod로 변경필요
                     - SPRING_PROFILES_ACTIVE=prod
+
                     - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
                     - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
-                    - SERVER_FORWARD_HEADERS_STRATEGY=native #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
-                    - SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER=x-forwarded-proto # X-Forwarded-Proto(http/https) 헤더를 읽어 프로토콜 결정
+                    - SERVER_FORWARD_HEADERS_STRATEGY=framework #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
                     - CUSTOM_COOKIE_SECURE=true
-                    - CUSTOM_COOKIE_SAME_SITE=None
+                    - CUSTOM_COOKIE_SAME_SITE=lax
+                    - SPRING_SESSION_STORE_TYPE=redis # 이제부터 세션 저장소는 Redis를
+                    - APP_FRONTEND_URL=https://${var.dns_name}
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}
@@ -497,7 +492,7 @@ resource "aws_instance" "nginx_server" {
                   server ${aws_instance.was_servers[1].private_ip}:3000 max_fails=3 fail_timeout=30s;
               }
 
-              upstream was_backend {
+              upstream was_backend
                   server ${aws_instance.was_servers[0].private_ip}:8080 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:8080 max_fails=3 fail_timeout=30s;
               }
@@ -699,6 +694,7 @@ resource "null_resource" "post_deploy_update" {
   }
 
   provisioner "local-exec" {
+    interpreter = ["bash", "-c"] # window에서도 실행가능하도록
     command = "chmod +x ./update_infrastructure.sh && bash ./update_infrastructure.sh"
 
     environment = {
