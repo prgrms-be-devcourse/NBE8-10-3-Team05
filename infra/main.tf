@@ -423,15 +423,15 @@ resource "aws_instance" "was_servers" {
                     # 3. Application Profiles & Security
                     # 기본값이 dev이기때문에 prod로 변경필요
                     - SPRING_PROFILES_ACTIVE=prod
+
                     - CUSTOM_JWT_SECRET_KEY=${var.jwt_secret_key}
                     - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${var.kakao_client_id}
                     - SERVER_FORWARD_HEADERS_STRATEGY=framework #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
-                    - SERVER_FORWARD_HEADER_STRATEGY=framework
                     - SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER=x-forwarded-proto # X-Forwarded-Proto(http/https) 헤더를 읽어 프로토콜 결정
                     - CUSTOM_COOKIE_SECURE=true
                     - CUSTOM_COOKIE_SAME_SITE=lax
                     - SPRING_SESSION_STORE_TYPE=redis # 이제부터 세션 저장소는 Redis를
-                    - SPRING_DATA_REDIS_HOST=${aws_instance.redis_server.private_ip}
+                    - APP_FRONTEND_URL=https://${var.dns_name}
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
                     - CUSTOM_API_ESTATE_KEY=${var.api_key_estate}
@@ -501,6 +501,7 @@ resource "aws_instance" "nginx_server" {
               }
 
               upstream was_backend {
+                  ip_hash; # 이 한 줄만 추가!
                   server ${aws_instance.was_servers[0].private_ip}:8080 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:8080 max_fails=3 fail_timeout=30s;
               }
@@ -702,6 +703,7 @@ resource "null_resource" "post_deploy_update" {
   }
 
   provisioner "local-exec" {
+    interpreter = ["bash", "-c"] # window에서도 실행가능하도록
     command = "chmod +x ./update_infrastructure.sh && bash ./update_infrastructure.sh"
 
     environment = {
