@@ -70,8 +70,10 @@ jobs:
           exit 1
 
       - name: Test with Gradle6
-        if: contains(toJson(github.event), '[skip test]')
-        run: ./gradlew test --build-cache --no-daemon
+        if: >
+          !contains(github.head_ref || github.ref, 'hotfix') &&
+          !contains(github.event.head_commit.message, 'hotfix')
+        run: ./gradlew test --build-cache
         working-directory: ./backend/back
         env:
           SPRING_CACHE_TYPE: none
@@ -96,3 +98,8 @@ jobs:
           CUSTOM_ELASTICSEARCH_HOST: localhost
           CUSTOM_ELASTICSEARCH_PORT: 9200
           CUSTOM_ELASTICSEARCH_SCHEME: http
+  call-cd-workflow:
+    needs: build-and-test # ci-build Job이 성공해야만 실행됨
+    # 조건: push 이벤트이면서 main 브랜치일 때만 무중단 배포 워크플로우 호출
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml # 파일 경로에 맞게 지정

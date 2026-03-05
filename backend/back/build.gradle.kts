@@ -163,6 +163,9 @@ dependencies {
     //mysql
     runtimeOnly ("com.mysql:mysql-connector-j")
 
+    //OAuth
+    implementation ("org.springframework.session:spring-session-data-redis")
+
 }
 
 tasks.withType<Test> {
