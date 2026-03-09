@@ -1,5 +1,6 @@
 package com.back.global.security
 
+import com.back.global.security.jwt.HttpCookieOAuth2AuthorizationRequestRepository
 import com.back.global.security.jwt.JwtAuthenticationFilter
 import com.back.global.security.jwt.JwtProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -8,6 +9,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
@@ -18,7 +20,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val customOAuth2LoginSuccessHandler: CustomOAuth2LoginSuccessHandler,
-    private val customOAuth2UserService: CustomOAuth2UserService
+    private val customOAuth2UserService: CustomOAuth2UserService,
+    private val httpCookieOAuth2AuthorizationRequestRepository : HttpCookieOAuth2AuthorizationRequestRepository
 ) {
 
     @Bean
@@ -59,9 +62,12 @@ class SecurityConfig(
             //.sessionManagement { sessionManagement ->
             //    sessionManagement.sessionCreationPolicy(STATELESS)
             .sessionManagement { sm ->
-                sm.sessionCreationPolicy(IF_REQUIRED)
+                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
             .oauth2Login { oauth2 ->
+                oauth2.authorizationEndpoint { endpoint ->
+                    endpoint.authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository)
+                }
                 oauth2.userInfoEndpoint { userInfo ->
                     userInfo.userService(customOAuth2UserService)
                 }.successHandler(customOAuth2LoginSuccessHandler)

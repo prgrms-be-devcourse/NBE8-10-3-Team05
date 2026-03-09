@@ -369,7 +369,7 @@ resource "aws_instance" "was_servers" {
   ami           = "ami-04d25ae66444b2b10"
   instance_type = "t3.micro"
   key_name      = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.ssh_sg.id, aws_security_group.was_sg.id]
+  vpc_security_group_ids = [aws_security_group.was_sg.id]
   tags = { Name = "was-${count.index + 1}" }
   user_data_replace_on_change = true
 
@@ -422,7 +422,7 @@ resource "aws_instance" "was_servers" {
                     - SERVER_FORWARD_HEADERS_STRATEGY=framework #Nginx https 잡는 역할 프록시 헤더를 신뢰하여 baseUrl을 자동으로 계산하게 함
                     - CUSTOM_COOKIE_SECURE=true
                     - CUSTOM_COOKIE_SAME_SITE=lax
-                    - SPRING_SESSION_STORE_TYPE=redis # 이제부터 세션 저장소는 Redis를
+                    # - SPRING_SESSION_STORE_TYPE=redis # 이제부터 세션 저장소는 Redis를
                     - APP_FRONTEND_URL=https://${var.dns_name}
 
                     # 4. External API Keys (YAML의 구조에 맞춰 주입)
@@ -492,7 +492,7 @@ resource "aws_instance" "nginx_server" {
                   server ${aws_instance.was_servers[1].private_ip}:3000 max_fails=3 fail_timeout=30s;
               }
 
-              upstream was_backend
+              upstream was_backend {
                   server ${aws_instance.was_servers[0].private_ip}:8080 max_fails=3 fail_timeout=30s;
                   server ${aws_instance.was_servers[1].private_ip}:8080 max_fails=3 fail_timeout=30s;
               }
@@ -530,7 +530,6 @@ resource "aws_instance" "nginx_server" {
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                       proxy_set_header X-Forwarded-Proto \$scheme;
                       proxy_set_header X-Forwarded-Port \$server_port;
-                      proxy_set_header X-Forwarded-Port 443;
                   }
 
                 # 카카오 인증 후 콜백 경로 (/login/oauth2/code/kakao) 처리
@@ -541,7 +540,6 @@ resource "aws_instance" "nginx_server" {
                       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                       proxy_set_header X-Forwarded-Proto \$scheme;
                       proxy_set_header X-Forwarded-Port \$server_port;
-                      proxy_set_header X-Forwarded-Port 443;
                   }
 
                   location /api {
