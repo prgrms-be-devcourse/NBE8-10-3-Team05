@@ -36,6 +36,8 @@ jobs:
           tags: ghcr.io/prgrms-be-devcourse/nbe8-10-3-team05/spring-next-app:latest
           cache-from: type=gha
           cache-to: type=gha, mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
 
   # ── 1. WAS 서버 1 배포 ────────────────────────────────────
   deploy-was1:
