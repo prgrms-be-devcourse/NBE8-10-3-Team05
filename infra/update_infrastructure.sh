@@ -33,6 +33,7 @@ if [ "$GH_LOGGED_IN" = true ]; then
     echo "$NGINX_HOST" | gh secret set "NGINX_HOST" --repo "$CLEAN_REPO"
     echo "$WAS1_PRIVATE_IP" | gh secret set "WAS1_PRIVATE_IP" --repo "$CLEAN_REPO"
     echo "$WAS2_PRIVATE_IP" | gh secret set "WAS2_PRIVATE_IP" --repo "$CLEAN_REPO"
+    echo "https://$DUCKDNS_DOMAIN" | gh secret set "NEXT_PUBLIC_API_URL" --repo "$CLEAN_REPO"
     echo "✅ 모든 GitHub Secrets 업데이트 완료!"
 else
     echo "❌ GitHub 로그인이 되어 있지 않아 Secrets 업데이트를 건너뜁니다."
