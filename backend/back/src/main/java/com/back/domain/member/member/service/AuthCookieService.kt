@@ -1,5 +1,7 @@
 package com.back.domain.member.member.service
 
+import org.springframework.util.SerializationUtils
+import java.util.Base64
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
@@ -56,4 +58,28 @@ class AuthCookieService(
             .build()
             .toString()
     }
+
+    // --- 객체 직렬화 유틸리티 (내부용) ---
+    fun serialize(obj: Any): String {
+        return Base64.getUrlEncoder()
+            .encodeToString(SerializationUtils.serialize(obj))
+    }
+
+    fun <T> deserialize(cookieValue: String, cls: Class<T>): T? {
+        return cls.cast(
+            SerializationUtils.deserialize(
+                Base64.getUrlDecoder().decode(cookieValue)
+            )
+        )
+    }
+
+    fun createCookie(name: String, value: String, maxAgeSeconds: Int): String =
+        ResponseCookie.from(name, value)
+            .httpOnly(true)
+            .secure(secureCookie)
+            .path("/")
+            .sameSite(sameSite)
+            .maxAge(maxAgeSeconds.toLong())
+            .build()
+            .toString()
 }
