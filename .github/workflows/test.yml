@@ -7,6 +7,7 @@ on:
       - 'backend/back/src/**'
       - 'backend/back/build.gradle*'
       - 'Dockerfile'
+      - '.github/workflows/**'
   pull_request:
     branches: [ "main", "dev" ]
     paths:
